@@ -1,0 +1,307 @@
+---
+title: "One-dimensional Turbulence Model (notes)"
+author: "Sienna White"
+format: pdf
+editor: source # was visual but q likes source
+text: |
+    \usepackage{amsmath}
+    \usepackage{tikz}
+#jupyter: python3
+---
+
+
+\section{Problem 3}
+Write the equation of motion for a velocity fluctuation. 
+
+We start by recalling the equation of motion for momentum, after performing Reynold's decomposition and splitting components into their mean and fluctuating parts...
+
+
+$$ \partial_t (\bar{u_j} + u_j') + (\bar{u_i} + u_i') \partial_i (\bar{u_j} + u_j') = - \frac{1}{\rho} \partial_j (\bar{P} +P') + \nu \partial_k \partial_k (\bar{u_j} + u_j')$$ 
+
+\begin{equation}
+     \partial_t \bar{u_j}  + \partial_t u_j' + \bar{u_i} \partial_i \bar{u_j} + \bar{u_i} \partial_i u_j' + u_i' \partial_i \bar{u_j}  + u_i' \partial_i u_j' = 
+     - \frac{1}{\rho} \partial_j \bar{P} - \frac{1}{\rho} \partial_j P' + \nu \partial_k \partial_k \bar{u_j} +\nu \partial_k \partial_k u_j'
+\end{equation}
+
+Now we can subtract our RANS equation for momentum from this equation to isolate the turbulent components ($u'$). Recall our RANS equation for momentum reads
+
+\begin{equation}
+     \partial_t \bar{u_j}  + \bar{u_i} \partial_i \bar{u_j}  =  - \frac{1}{\rho} \partial_j \bar{P}  + \nu \partial_k \partial_k \bar{u_j} -  \partial_i \overline{u_j'u_i'}  . 
+\end{equation}
+
+Subtracting Equation (2) from Equation (1) yields
+\begin{equation}
+     \partial_t u_j' + \bar{u_i} \partial_i u_j' + u_i' \partial_i \bar{u_j}  + u_i' \partial_i u_j' =  - \frac{1}{\rho} \partial_j P'  +\nu \partial_k \partial_k u_j' + \partial_i \overline{u_j'u_i'}  . 
+\end{equation}
+
+\begin{equation}
+     \partial_t u_j' + \bar{u_i} \partial_i u_j'  =  - \frac{1}{\rho} \partial_j P'  +\nu \partial_k \partial_k u_j' + \partial_i \overline{u_j'u_i'} - u_i' \partial_i \bar{u_j}  - u_i' \partial_i u_j'  . 
+\end{equation}
+
+\subsection{Derive equation for Reynold's Stress Transport}
+
+We multiply this equation by $u_k'$, expanding this into a 3x3 tensor equation. 
+\begin{equation}
+     u_k' \partial_t u_j' + u_k' \bar{u_i} \partial_i u_j'  =  - u_k' \frac{1}{\rho} \partial_j P'  + u_k' \nu \partial_z \partial_z u_j' + u_k' \partial_i \overline{u_j'u_i'} - u_k' u_i' \partial_i \bar{u_j}  - u_k' u_i' \partial_i u_j'  . 
+\end{equation}
+
+Reynold's Average: 
+\begin{equation}
+     \langle u_k' \partial_t u_j' \rangle  +
+     \langle u_k' \bar{u_i} \partial_i u_j' \rangle  =  
+      - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle + 
+     \langle u_k' \nu \partial_z \partial_z u_j' \rangle  + 
+     \langle u_k' \partial_i \overline{u_j'u_i'} \rangle - 
+     \langle u_k' u_i' \partial_i \bar{u_j} \rangle - 
+     \langle u_k' u_i' \partial_i u_j' \rangle . 
+\end{equation}
+The divergence of the averaged Reynold's Stress goes to zero, as it's an averaged quantity multiplied by a fluctuating value 
+
+\begin{equation}
+     \langle u_k' \partial_t u_j' \rangle  +
+     \langle u_k' \bar{u_i} \partial_i u_j' \rangle  =  
+      - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle + 
+     \langle u_k' \nu \partial_z \partial_z u_j' \rangle  + 
+     \langle u_k' u_i' \partial_i \bar{u_j} \rangle - 
+     \langle u_k' u_i' \partial_i u_j' \rangle . 
+\end{equation}
+
+We now take a second equation, flip the indices 
+\begin{equation}
+     \langle u_j' \partial_t u_k' \rangle  +
+     \langle u_j' \bar{u_i} \partial_i u_k' \rangle  =  
+      - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle + 
+     \langle u_j' \nu \partial_z \partial_z u_k' \rangle  + 
+     \langle u_j' u_i' \partial_i \bar{u_k} \rangle - 
+     \langle u_j' u_i' \partial_i u_k' \rangle 
+\end{equation}
+
+and add these together. To reduce the messiness, we will first look at the LHS,
+
+\begin{equation}
+     \langle u_j' \partial_t u_k' \rangle  +
+     \langle u_j' \bar{u_i} \partial_i u_k' \rangle  +
+     \langle u_k' \partial_t u_j' \rangle  +
+     \langle u_k' \bar{u_i} \partial_i u_j' \rangle.
+\end{equation}
+
+To simply, we apply the reverse product rule (ie, given we know)
+$$ \frac{\partial}{\partial t} \langle u_k' u_j' \rangle               = \langle u_k' \frac{\partial}{\partial t}  u_j' \rangle + 
+    \langle u_j' \frac{\partial}{\partial t}  u_k' \rangle $$
+    
+and 
+$$ \bar{u_i}\frac{\partial}{\partial x_i} \langle u_k' u_j' \rangle  = \bar{u_i} \langle u_k' \frac{\partial}{\partial x_i} u_j' \rangle  + \bar{u_i} \langle  u_j' \frac{\partial}{\partial x_i} u_k' \rangle,
+$$ 
+
+we can rewrite this LHS as
+
+$$ \partial_t \langle u_k' u_j' \rangle  + \bar{u_i} \partial_i \langle u_k' u_j' \rangle. $$
+
+Now onto the fun bit... the RHS. Currently we have
+
+$$ - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle  
+     - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle  
+    + \langle u_k' \nu \partial_z \partial_z u_j' \rangle  
+   + \langle u_j' \nu \partial_z \partial_z u_k' \rangle  
+    +   \langle u_k' u_i' \partial_i \bar{u_j} \rangle 
+    + \langle u_j' u_i' \partial_i \bar{u_k} \rangle  
+   -  \langle u_k' u_i' \partial_i u_j' \rangle  
+  - \langle u_j' u_i' \partial_i u_k' \rangle . 
+$$ 
+
+Some of this follows the same pattern (reverse product rule), allowing us to expand our fluctuating pressure term. Consider that 
+$$ \frac{\partial }{\partial x_j} \langle u_k' P' \rangle =
+\langle u_k' \partial_j P' \rangle  + \langle P' \partial_j u_k' \rangle.$$
+
+We substitute 
+$$ - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle = 
+ \frac{1}{\rho} \left( \langle P' \partial_j u_k' \rangle - \partial_j \langle u_k' P' \rangle \right) $$ 
+
+$$ - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle = 
+ \frac{1}{\rho} \left( \langle P' \partial_k u_j' \rangle - \partial_k \langle u_j' P' \rangle \right) $$ 
+
+ 
+ Next we identify the advection of mean flow by the Reynolds stress, i.e., the terms 
+ 
+   $$    \langle u_k' u_i' \partial_i \bar{u_j} \rangle 
+    + \langle u_j' u_i' \partial_i \bar{u_k} \rangle. $$ 
+
+We won't rearrange these terms for now, since they're already in a form involving an averaged Reynold's stress. The viscous dissipation, however, looks like an interesting challenge, 
+
+ $$ \nu  \langle u_k' \partial_z \partial_z u_j' \rangle  
+   +  \nu \langle u_j' \partial_z \partial_z u_k' \rangle. $$ 
+   
+We would like to write this as the diffusion of the Reynolds stress. We expect such diffusion to look like 
+$$ \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle ,$$ 
+
+which would expand (ignoring the coefficient) as
+
+$$ \partial_z \left( \partial_z \langle  u_k'  u_j' \rangle \right) = \partial_z  ( \langle u_k' \partial_z  u_j' \rangle + \langle u_j' \partial_z u_k' \rangle) $$
+
+$$ =  \langle u_k' \partial_z \partial_z u_j' \rangle + \langle \partial_z u_j'\partial_z u_k' \rangle +  \langle \partial_z u_j'\partial_z u_k' \rangle + \langle u_j' \partial_z  \partial_z u_k' \rangle.$$ 
+ 
+ We relate this to the term in the equation by substituting 
+ 
+$$ \nu  \langle u_k' \partial_z \partial_z u_j' \rangle  
++  \nu \langle u_j' \partial_z \partial_z u_k' \rangle =  \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle - 2 \nu \langle \partial_z u_j'\partial_z u_k' \rangle.
+$$
+
+The last terms we want to deal with are the advection of turbulent fluctuations by the Reynolds stress itself, 
+  $$  -  \langle u_k' u_i' \partial_i u_j' \rangle  
+  - \langle u_j' u_i' \partial_i u_k' \rangle . $$ 
+  
+  We recognize this pattern, and can apply reverse-product-rule. The last step is due to impressibility (allows us to put $u_i$ inside the derivative).  
+    $$  -  \langle u_i' u_k'  \partial_i u_j' \rangle  
+  - \langle u_i' u_j' \partial_i u_k' \rangle =  -  \langle u_i' \partial_i u_k' u_j' \rangle  = -  \langle  \partial_i u_k' u_j' u_i' \rangle $$ 
+  
+  
+Now we can put together all the steps. For notation in this last step, I am using capital $U$ to denote an averaged velocity (instead of an overbar). 
+
+\begin{equation}
+    \partial_t \langle u_k' u_j' \rangle  + U_i \partial_i \langle u_k' u_j' \rangle= 
+\end{equation}
+
+    % triple correlation 
+  $$  -   \partial_i \langle  u_k' u_j' u_i' \rangle 
+    % transport mean flow by RE 
+    +  \langle u_k' u_i'\rangle  \partial_i U_j  
+    + \langle u_j' u_i' \rangle \partial_i U_k  
+    $$ 
+    
+     % viscous stress
+ $$  + \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle - 2 \nu \langle \partial_z u_j'\partial_z u_k' \rangle +
+    % pressure 
+\frac{1}{\rho} \left( P' \langle \partial_j u_k' + \partial_k u_j' \rangle - \partial_j \langle u_k' P' \rangle  - \partial_k \langle u_j' P' \rangle \right)  $$ 
+
+
+We can define all these terms and define them from a physics perspective. Starting left to right, 
+
+\begin{enumerate}
+    \item Storage / time variation of the Reynold's stress
+    \item Advection of the Reynold's stress by the mean flow
+    \item Triple Correlation: transport of Reynold's stress by turbulent motions. 
+    \item Advection of flow by Reynold's stress. This is also seen as a production term, as it captures the conversion of turbulence from the mean flow through shear. 
+    \item (shear production)
+    \item Diffusion of mometum from viscosity / molecular interactions. 
+    \item This is a very exciting term! It is the viscous dissipation term and it \textit{directly destroys} Reynold's stress through conversion to heat.  
+    \item These next two terms are very interesting. Franko spent a long time talking to me about this one before he graduated, and said if I understood this term, I would ``understand some grand part of turbulence." Whether or not that is true has yet to be seen. However, this is the pressure-strain correlation. It resembles the rate-of-strain tensor, and similar to $S_{ij},$ this tensor is traceless. This term cannot create or destroy turbulence, however, it often performs what is called ``pressure scrambling." One of these terms will anisotropize the turbulence (``fast term") and the other isotropizes the flow (``slow term"). 
+    \item These terms are transport by a pressure-fluctuation correlation term. 
+\end{enumerate}
+
+
+The TKE Equation can be expressed as 
+\begin{equation}
+\frac{\partial k}{\partial t} + \bar{U_j}
+\end{equation}
+
+The density profile is calculated according to 
+\begin{equation}
+\rho = \rho_0 (1 - \alpha (C - T_0))
+\end{equation}
+
+\section{The Mellor-Yamada closure}
+We start with the continuity equation,
+\begin{equation}
+\frac{\partial \rho}{\partial t} + \frac{\partial }{\partial x_i} (\rho U_i) = 0 
+\end{equation}
+where flow is considered to be divergent-free, or solenoidal.
+
+Meanwhile, the Reynolds-Averaged Navier Stokes reads:
+\begin{equation}
+\frac{\partial \overline{U}}{\partial t} 
++ \overline{U_j} \frac{\partial \overline{U_k} }{\partial x_j} 
++ \rho \epsilon_{jkl} f_k U_l 
+= \frac{\partial }{\partial x_k} \overline{u_k u_j} 
+- \frac{\partial \overline{P}}{\partial x_j} 
+- g \hat{e_3} 
+\end{equation}
+
+The Boussinesq approximation is invoked to represent that density fluctuaions affect bouyancy but no other transport/state terms. These fluctuations are written $\beta \theta$ , where $\beta$ is the coefficient of thermal expansion. 
+
+
+Mellor and Herring (1973) uses the following equation:
+\begin{equation}
+\langle \frac{p}{\rho} (\frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i})  \rangle = - \frac{q}{3l_1} ( \overline{u_iu_j} - \frac{\delta_{ij}}{3} q^2) + C_1 q^2 (\frac{\partial U_i}{\partial x_j} + \frac{\partial U_j}{\partial x_i})  
+\end{equation} 
+
+
+We are establishing equations for the following: $\overline{u_k u_i u_j},~ \overline{p u_j},~ \overline{u_i u_j \theta},$ and $\overline{p\theta}$ 
+
+Math Note
+The velocity gradient $\frac{\partial U_j}{\partial x_i}$ can be decomposed into symmetric and antisymmetric parths,
+$$\frac{\partial U_j}{\partial x_i} = S_{ij} + \Omega_{ij} $$ 
+where the symmetric rate-of-strain tensor is
+$$ S_{ij} = \frac{1}{2} \left( \frac{\partial U_i}{\partial x_j} + \frac{\partial U_j}{\partial x_i} \right) $$  
+and the asymmetric part is, 
+$$ \Omega_{ij} = \frac{1}{2} \left( \frac{\partial U_i}{\partial x_j} - \frac{\partial U_j}{\partial x_i} \right) $$  
+
+\subsection{Parameterization}
+\begin{equation}
+\langle u_k u_i u_j \rangle = \frac{3}{5} 
+ ~l q S_q 
+ \left( \frac{\partial \langle u_i u_j \rangle}{\partial x_k}  
++ \frac{\partial \langle u_i u_k \rangle}{\partial x_j}
++ \frac{\partial \langle u_j u_k \rangle}{\partial x_i} \right)
+\end{equation}
+
+In this equation $S_q$ is a dimensionless number. 
+
+Sm :
+\begin{equation}
+\frac{A_1}{A_2} \frac{B_1(\gamma - C_1) - (B_1 (\gamma_1 - C_1) + 6 (A_1 + 3A_2)) R_f}{B_1 \gamma_1 - (B_1(\gamma_1 + \gamma_2) - 3A_1) R_f}
+\end{equation}
+
+where $$ \gamma_1 = \frac{1}{3} - \frac{2 A_1}{B_1} $$ 
+and
+$$ \gamma_2 = \frac{B_2}{B_1} - \frac{6 A_1}{B_1} $$ 
+
+$$ $$ 
+
+Sh:
+$$ S_h  =  \frac{A_2 (1 - \frac{6 A_1}{B_1})}{1-(3 A_2 B_2 G_h + 18 A_1 A_2 G_h) }  = \frac{A_2 (1 - \frac{6 A_1}{B_1})}{(1-3 A_2 G_h (B_2+6 A_1))}   $$
+ 
+
+ $$ 
+S_m = \frac{A_1 (1 - 3C_1 - \frac{6A_1}{B_1}) + S_H G_h(18A_1 + 9A_1A_2)}{(1 - 9A_1 A_2 G_h)}
+ $$ 
+
+Richardson's number:
+$$ G_H = - \frac{L^2}{Q^2}\frac{g}{\rho_0}\frac{\partial}{\partial z}$$ 
+
+
+Turbulent visosity:
+\begin{equation}
+K_q = S_m  Q  L  \nu
+\end{equation}
+
+
+Turbulent diffusivity: 
+\begin{equation}
+K_q = S_q  Q  L  \nu 
+\end{equation}
+
+Turbulent scalar diffusivity: 
+\begin{equation}
+K_q = S_h * Q * L * \nu 
+\end{equation}
+
+
+\subsection{Chosen parameters}
+$$ C_1 = \gamma_1 - \frac{1}{3A_1} B_1^{1/3} \approx 0.08$$ 
+
+$$ B_2 = \frac{B_1^{1/3}}{P_{rt}} \frac{u_T^2 \langle \theta^2 \rangle}{H^2} \approx $$ 
+$$ B_1 = 16.6  $$ 
+
+\section{writing equations based on code}
+
+$$ bX = bX - \frac{aX cX}{bX}$$ 
+
+$$ dX = dX - \frac{aX dX}{bX}$$ 
+
+$$ u_* = U_{bed} \sqrt{C_d}$$ 
+
+$$G_h = - \left(\frac{N_{BV} * L}{Q + Small} \right)^2$$
+
+$$ diss= 2 \frac{dt * \sqrt{Q^2}}{B_1 L_p} $$ 
+
+

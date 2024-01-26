@@ -70,6 +70,7 @@ Px0 = .001  # Magnitude on pressure gradient forcing
 T_Px = 12.0 # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 # Turbulence closure parameters 
+# all dimensionless for mellor-yamada / no need to change unless we modify model
 A1=0.92
 A2=0.74
 B1=16.6
@@ -91,11 +92,6 @@ base_temp = 15   # Temperature of water column [deg C]
 empty_arrays = [np.zeros(N) for i in range(5)]
 C, rho, N_BV, U, V = empty_arrays
 
-# C = np.zeros(N)
-# rho = np.zeros(N)
-# N_BV = np.zeros(N)
-# U = np.zeros(N)
-# V = np.zeros(N)
 
 #for i in range(N):
  # if z[i] >= -5:
@@ -136,17 +132,22 @@ N_BV[N-1] = math.sqrt(abs((-g/rho0)*(rho[N-1] - rho[N-2])/(dz)))
 ###########################################################################
 ####  Set initial conditions for u, q^2, and other turbulence quantities
 ###########################################################################
-Q2 = SMALL*np.ones(N)   # "seed" the turbulent field with small values, then let it evolve
+Q2  = SMALL*np.ones(N)   # "seed" the turbulent field with small values, then let it evolve
 Q2L = SMALL*np.ones(N)
-Q = np.zeros(N)
+
 L = -kappa*H*(z/H)*(1-(z/H)) # Q2L(n,1)/Q2(n,1) = 1 at initialization
-Sm = np.zeros(N)
-Sh = np.zeros(N)
-nu_t = np.zeros(N)
-Kq = np.zeros(N)
-Kz = np.zeros(N)
 
+# Initialize empty arrays with size N
+empty_arrays = [np.zeros(N) for i in range(6)]
+Q, Sm, Sh, nu_t, Kq, Kz = empty_arrays
+# Q -- square root of turbulent kinetic energy [sqrt(Q^2)]
+# sm, sh are stability parameters, calculated in the mellor-yamada closure. coefficient on turbulent mixing coefficients
+# sm is for momentum , sh is for scalars -- 
+# nu_t is turbulent viscosity 
+# Kq is turbulent diffusion cofficient (for Q^2)
+# Kz is turbulent diffusion coefficient for scalars
 
+# Gh is a stratification correction 
 
 for i in range(N):
   if z[i] <= -2:
@@ -155,13 +156,15 @@ for i in range(N):
     U[i] = 0.1*(z[i] + 2)
   Q[i] = math.sqrt(Q2[i])
 
-  print(len(N_BV))
-  print(len(L))
-  print(len(Q))
 
   Gh = -((N_BV[i]*L[i])/(Q[i] + SMALL))**2
   Gh = min(Gh, 0.0233)
-  Gh = max(Gh, -0.28)        
+  Gh = max(Gh, -0.28)   
+
+  # 
+#   y1 = (1/3) - (2*A1/B1)
+#   y2 = (B2/B1) + (6*A1/B1)    
+#   sm_siena = (A1/A2)*(B1*(y1 - C1) - B1*(y1-C1) + 6*(A1 + ))   
   num= B1**(-1/3) - A1*A2*Gh*((B2-3*A2)*(1-6*A1/B1)-3*C1*(B2+6*A1))
   dem= (1-3*A2*Gh*(B2+6*A1))*(1-9*A1*A2*Gh)
   Sm[i] = num/dem
@@ -171,7 +174,6 @@ for i in range(N):
   Kz[i] = Sh[i] * Q[i] * L[i] + nu # Turbulent scalar diffusivity
 
 
-assert(False)
 
 
 #  Save initial conditions as first columns in saved matrix
@@ -187,6 +189,7 @@ Kzm = np.zeros((N,4))
 Kqm = np.zeros((N,4))
 N_BVm = np.zeros((N,4))
 
+# Initialize first column 
 Um[:,0] = U
 Cm[:,0] = C
 Q2m[:,0] = Q2
@@ -205,8 +208,8 @@ N_BVm[:,0] = N_BV
     All diffusion/viscous terms handled implicitly
 '''
 
-
 def TDMA(aX, bX, cX, dX, N):
+    # a = Lower Diag, b = Main Diag, c = Upper Diag, d = solution vector
     x = np.zeros(N)
     for i in range(1, N):
         bX[i] = bX[i] - aX[i]/bX[i-1]*cX[i-1]
@@ -224,16 +227,22 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
     bC = np.zeros(N)
     cC = np.zeros(N)
     dC = np.zeros(N)
+    # ^ these vectors represent the diagonals of the tridiagonal matrix and dC is the RHS vector
     aQ2 = np.zeros(N)
     bQ2 = np.zeros(N)
     cQ2 = np.zeros(N)
     dQ2 = np.zeros(N)
+    # ^ these vectors represent the diagonals of the tridiagonal matrix for turbulent kinetic energy
     aQ2L = np.zeros(N)
     bQ2L = np.zeros(N)
     cQ2L = np.zeros(N)
     dQ2L = np.zeros(N)
+    # ^ these vectors represent the diagonals of the tridiagonal matrix for Q^2 * L (turbulent kinetic energy times a lengthscale)
+
+
 
     Px = np.zeros(N)
+
     #  Update pressure forcing term for the current timestep
     for i in range(N):
         if T_Px == 0.0:
@@ -246,13 +255,13 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
 
 
     # Update parameters for the model, Sm and Sh
-
     for i in range(N):		
         Gh=-(N_BV[i]*L[i]/(Q[i]+SMALL))**2 
         
         # set LIMITER for Gh 
         Gh=min(Gh, 0.0233)
         Gh=max(Gh, -0.28)
+
         num=B1**(-1/3)-A1*A2*Gh*((B2-3*A2)*(1-6*A1/B1)-3*C1*(B2+6*A1))
         dem=(1-3*A2*Gh*(B2+6*A1))*(1-9*A1*A2*Gh)
         Sm[i]=num/dem
@@ -285,8 +294,10 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
     aC[-1] = -0.5*beta*(Kzp[-1] + Kzp[N-2])
     bC[-1] = 1+0.5*beta*(Kzp[-1] + Kzp[N-2])
     dC[-1] = Cp[-1]
+
     # Thomas algorithm to solve for C
     C = TDMA(aC, bC, cC, dC, N)
+
     #update density and Brunt-Vaisala frequency
     for i in range(N):
         rho[i] = rho0*(1-alpha*(C[i] - 15))
@@ -303,6 +314,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
             bQ2[i] = 1+0.5*beta*(Kqp[i+1] + 2*Kqp[i] + Kqp[i-1]) + diss
             cQ2[i] = -0.5*beta*(Kqp[i] + Kqp[i+1])
             dQ2[i] = Q2p[i] + 0.25*beta*nu_tp[i]*(Up[i+1]-Up[i-1])**2 -dt*Kzp[i]*(N_BVp[i]**2)
+
     # Bottom-Boundary Condition 
     Q2bot = B1**(2/3) * ustar**2
     bdryterm = 0.5*beta*Kqp[0]*Q2bot
@@ -310,11 +322,13 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
     bQ2[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + diss
     cQ2[0] = -0.5*beta*(Kqp[1] + Kqp[0])
     dQ2[0] = Q2p[0] + dt*((ustar**4)/nu_tp[0]) - dt*Kzp[0]*(N_BVp[0]**2) + bdryterm
+
     # Top-Boundary Condition
     diss =  2 * dt *((Q2p[-1]**0.5)/(B1*Lp[-1]))
     aQ2[-1] = -0.5*beta*(Kqp[-1] + Kqp[N-2])
     bQ2[-1] = 1+0.5*beta*(Kqp[-1] + 2*Kqp[-1] + Kq[N-2]) + diss
     dQ2[-1] = Q2p[-1] + 0.25*beta*nu_tp[-1]*((Up[-1] - Up[N-2])**2) -4*dt*Kzp[-1]*(N_BVp[-1]**2)
+
     # TDMA to solve for q2
     Q2 = TDMA(aQ2, bQ2, cQ2, dQ2, N)
     # Kluge to prevent negative values from causing instabilities
@@ -337,6 +351,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
     bQ2L[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + diss
     cQ2L[0] = -0.5*beta*(Kqp[1] + Kqp[0])
     dQ2L[0] = Q2Lp[0] + dt*((ustar**4)/nu_tp[0])*E1*Lp[0] - dt*Lp[0]*E1*Kzp[0]*(N_BVp[0]**2) + bdryterm
+
     # Top-Boundary Condition
     diss =  2 * dt *(Q2p[-1]**0.5)/(B1*Lp[-1])*(1+E2*(Lp[-1]/(kappa*abs(-H-z[-1])))**2 + E3*(Lp[-1]/(kappa*abs(z[-1])))**2)
     aQ2L[-1] = -0.5*beta*(Kqp[-1] + Kqp[N-2])
@@ -370,3 +385,35 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
             Kz[i] = Sh[i]*Q[i]*L[i] + nu      
     #return C, Q2, Q2L
     return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV
+
+
+t = np.zeros(M)
+for m in range(1,M):
+   
+    if m%100 == 0:
+        print('m = %d' % m)
+    t[m]=dt*(m-1) #define time
+    # Because of how Python handles variables compared to MATLAB, we pass the variables as arguments and get them returned
+    [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV] = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV) #uses BGO/Mellor-Yamada 2-equation closure
+    if m == 1 or m == 10 or m == 140:
+        Cm[:,savecount] = C
+        Q2m[:,savecount] = Q2
+        Q2Lm[:,savecount] = Q2L
+        rhom[:,savecount] = rho
+        Lm[:,savecount] = L
+        nu_tm[:,savecount] = nu_t
+        Kzm[:,savecount] = Kz
+        Kqm[:,savecount] = Kq
+        N_BVm[:,savecount] = N_BV
+        Um[:,savecount] = U
+        savecount += 1 # Because of how Python handles identation compared to Matlab, 
+    #savecount starts at 1 (instead of 0) and only gets incremented at the end of the step
+savecount = 1
+
+
+
+print('Plotting...')
+plt.plot(Um[:,1], z)
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12,12))
+
+plt.show()
