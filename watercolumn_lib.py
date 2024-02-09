@@ -17,6 +17,7 @@ variable2name['nu_t'] = r'turbulent viscosity ($\nu_t$)'
 variable2name['Kz'] = r'turbulent diffusivity ($K_z$)'
 variable2name['Kq'] = r'turbulent diffusivity ($K_q$)'
 variable2name['N_BV'] = r'Brunt-Vaisala frequency ($N_{BV}$)'
+variable2name['algae'] = r'Algae Concentration'
 
 variable2units = {}
 variable2units['U'] = 'm/s'
@@ -29,6 +30,7 @@ variable2units['nu_t'] = r'm$^2$/s'
 variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV'] = r'1/s'
+variable2units['algae'] = r'?'
 
 
 def initialize_abcd(N):
@@ -51,10 +53,6 @@ def TDMA(aX, bX, cX, dX, N):
     return x
 
 
-
-
-
-
 class SavedProfiles:
     def __init__(self,n_profiles, variables_to_save, N, isave):
         self.n_profiles = n_profiles
@@ -73,7 +71,7 @@ class SavedProfiles:
 
     def store_z(self, z):
         self.z = z
-    def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV):
+    def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
         profile_num = profile_num//self.isave
         self.saved_profiles['U'][:,profile_num] = U
         self.saved_profiles['C'][:,profile_num] = C
@@ -85,6 +83,7 @@ class SavedProfiles:
         self.saved_profiles['Kz'][:,profile_num] = Kz
         self.saved_profiles['Kq'][:,profile_num] = Kq
         self.saved_profiles['N_BV'][:,profile_num] = N_BV
+        self.saved_profiles['algae'][:,profile_num] = algae
         self.saved_profiles['time'][profile_num] = time
 
     def plot_profiles(self, variable, skip=1):
@@ -99,9 +98,9 @@ class SavedProfiles:
                     label='Initial condition')
             else:
                 ax.plot(self.saved_profiles[variable][:,ind], 
-                        self.z, 
+                        self.z, '-',
                         color = mpl.cm.viridis(i/len(plots)),
-                        linewidth = 2, 
+                        linewidth = 2.5, 
                         alpha = 0.6,
                         label='t = %d sec' % self.saved_profiles['time'][ind],)
         ax.legend()

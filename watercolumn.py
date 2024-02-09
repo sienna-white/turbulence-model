@@ -24,6 +24,8 @@ beta = (dt/dz**2)
 isave=1 #increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 savecount=1
 
+import time as time
+t1 = time.time() 
 z = [(-H + dz*(i + 0.5)) for i in range(N)]
 z = np.array(z)
 # Store model information in class object
@@ -410,10 +412,12 @@ for m in range(1,M):
     #savecount starts at 1 (instead of 0) and only gets incremented at the end of the step
 savecount = 1
 
+print(time.time()  - t1) 
 
+# print('Plotting...')
+# plt.plot(Um[:,1], z)
+# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12,12))
 
-print('Plotting...')
-plt.plot(Um[:,1], z)
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12,12))
+# plt.show()3.3690528869628906
 
-plt.show()
+1.576348066329956
