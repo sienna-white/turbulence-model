@@ -239,6 +239,9 @@ We evaluate the diffusion term first in space. Note here that diffusion is given
 $$ 
  \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) \rightarrow \frac{1}{\Delta z} \left( \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i - 1/2} \right)
 $$ 
+
+![Stencil for kappa & C](/Users/siennawhite/research/turbulence-model/diagrams/1x/stencil.png){height=150}
+
 We represent these $1/2$ stencil points as the average of the two neighboring cells (this is where I will now drop the subscript on $\kappa_t$),
  $$ \kappa_{ i + 1/2}  \approx  \frac{ \kappa_{i + 1} +  \kappa_{i} }{2} $$
  $$ \kappa_{ i - 1/2}  \approx  \frac{ \kappa_{i - 1} +  \kappa_{i} }{2} $$
@@ -283,6 +286,8 @@ This all simplifies out to,
 $$ \begin{split}  C_i^n  =  C_{i+1}^{n+1} \left( -\frac{\Delta t}{2 \Delta z^2} (\kappa_{i}^{n} + \kappa_{i+1}^{n+1}) \right) \\
 +  C_{i}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n}) \right) \\ 
 + C_{i-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} -  \frac{\Delta t}{2 \Delta z^2} (\kappa_{i -1}^{n} +  \kappa_{i}^{n} ) \right) \end{split} $$
+
+In code, to solve this tridiagonal system, we initialize 
 
 ```{python}{eval|false}
     ws = - 0.002 # settling velocity

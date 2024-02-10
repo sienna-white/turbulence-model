@@ -21,6 +21,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import watercolumn_lib as lib
+
+from phytoplankton import Algae_Species
 import time
 '''
 Because the indexing is a little confusing in Python vs. Matlab (0 is the bed, N-1 is 
@@ -55,6 +57,20 @@ kappa = 0.4       # Von Karman constant
 nu = 1e-6         # Kinematic viscosity [m^2/s]
 rho0 = 1000       # Water density [kg/m^3]
 
+# Algae parameters 
+diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+                   pmax = 0.05,     # maximum specific growth rate [1/hour]
+                   ws = 0,          # vertical velocity [cm/hour]
+                   Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
+                   Li = 0.006,      # specific loss rate [1/hour]
+                   name = "Diatoms")
+
+diatoms.set_initial_concentration(N, init=10)
+diatoms.set_vertical_grid(H, N, dz)
+
+background_turbidity =  0.16
+I_in = 350 
+
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
 zdelC  = -5      # Position of initial thermocline
@@ -82,16 +98,12 @@ top = N-1
 
 t1 = time.time() 
 
-
 # Create a vector of time steps 
 t = np.zeros((M))
 t[1:M] = dt * (np.arange(1,M) - 1)
 
 # SW ADDITION : PHYTOPLANKTON! 
-algae = np.zeros(N)
-algae = algae + np.arange(0,N) * 0.1
-print(algae)
-
+algae = diatoms.c
 
 #***************************************************************************
 #   Define supporting functions
@@ -112,7 +124,6 @@ def calculate_brunt_vaisala(rho_, N_BV):
     N_BV[top] = math.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
     return N_BV
 #***************************************************************************
-
 
 '''
 Initialize all profiles and closure parameters 
@@ -278,27 +289,30 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     #***************************************************************************
     #   Advance algae! // need to figure out to include settling velocity / source + sink
     #***************************************************************************
-    ws = - 0.002 # settling velocity
-    dtdz = (dt/dz)
-    gamma = np.ones(N-1)* 0 # Growth + loss term !!! 
+    ws    = diatoms.ws
+    dtdz  = dt/dz
+    gamma = diatoms.get_loss_and_growth(I_in = 350, current_concentration = Ap)
+    print(gamma*dt)
+    # np.ones(N)* 1e-5 # Growth + loss term !!! 
 
     aA[1:top]  = - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-    bA[1:top]  =  1 + ws*dtdz  + beta/2 *(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1])
+    bA[1:top]  =  1 + ws*dtdz  + beta/2 *(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) + gamma[1:top]*dt 
     cA[1:top] = -ws*dtdz  - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
     dA = Ap
 
     # Bottom-Boundary: no flux for scalars
-    bA[0] = 1  + beta/2 * (Kzp[1] + Kzp[0]) # + ws*dtdz 
+    bA[0] = 1  + beta/2 * (Kzp[1] + Kzp[0]) +  gamma[0]*dt # + ws*dtdz 
     cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
     dA[0] =  Ap[0]
 
     # Top-Boundary: no flux for scalars
     aA[top] = -ws*dtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) 
+    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) + gamma[top]*dt
     dA[top] = Ap[top]
 
     # Thomas algorithm to solve for C
     algae = lib.TDMA(aA, bA, cA, dA, N)
+    algae[algae < 0] = SMALL
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
@@ -404,7 +418,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    print(algae)
+    # print(algae)
 
     return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae
 
@@ -431,4 +445,4 @@ saved_profiles.plot_profiles('algae', skip=2)
 # saved_profiles.plot_profiles('C', skip=2)
 # saved_profiles.plot_profiles('nu_t', skip=2)
 # saved_profiles.plot_profiles('L', skip=2)
-# saved_profiles.plot_profiles('Kz', skip=2)
+saved_profiles.plot_profiles('Kz', skip=2)
