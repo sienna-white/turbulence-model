@@ -18,10 +18,10 @@ text: |
 \tableofcontents
 
 \section{Governing equations for flow}
+We first discuss the derivation of the equations used for our one-dimensional water column model.  
 
 \subsection{Reynolds-averaged Navier Stokes}
-
-The Reynolds-Averaged Navier Stokes reads:
+We start with the Reynolds-Averaged Navier Stokes, which reads:
 \begin{equation}
 \frac{\partial \overline{u_i}}{\partial t} 
 + \overline{u_j} \frac{\partial \overline{u_i} }{\partial x_j} 
@@ -29,13 +29,13 @@ The Reynolds-Averaged Navier Stokes reads:
 - \frac{1}{\rho_0} \frac{\partial \overline{p}}{\partial x_i} 
 - g \delta_{i3} + \nu \frac{\partial^2 }{\partial x_j \partial x_j}  \overline{u_i} 
 \end{equation}
-where flow is considered to be divergent-free, or solenoidal,
+where flow is considered to be incompressible (solenoidal),
 \begin{equation}
 \frac{\partial u_i}{\partial x_i} = 0.
 \end{equation}
 
-The Boussinesq approximation is invoked to represent that density fluctuaions affect bouyancy but no other transport/state terms. These fluctuations are written $\beta \theta$ , where $\beta$ is the coefficient of thermal expansion. This equation in the $\hat{e_1}$ direction, expanded, reads
-
+<!-- The Boussinesq approximation is invoked to capture that density fluctuaions affect bouyancy but no other transport/state terms. These fluctuations are written $\beta \theta$ , where $\beta$ is the coefficient of thermal expansion.  -->
+This equation in the $\hat{e_1}$ direction, expanded, reads
 $$
 \frac{\partial \overline{u}}{\partial t} 
 +  \overline{u} \frac{\partial \overline{u} }{\partial x} 
@@ -47,7 +47,7 @@ $$
 - \frac{1}{\rho_0} \frac{\partial \overline{p}}{\partial x} 
 + \nu \left( \frac{\partial^2 u }{\partial x^2} + \frac{\partial^2 u }{\partial y^2 } +\frac{\partial^2 u }{\partial z^2 } \right).
 $$
-We neglect advection and gradients in the $x$ and $y$ directions and take $w=0$ as established earlier, 
+We neglect advection and gradients in the $x$ and $y$ directions and take $w=0$ (established by the boundary layer approxmiation), 
 $$ 
 \frac{\partial \overline{u}}{\partial t} 
 +  \cancel{\overline{u} \frac{\partial \overline{u} }{\partial x} }
@@ -60,15 +60,15 @@ $$
  + \nu \left(\cancel{\frac{\partial^2 u }{\partial x^2}} + \cancel{\frac{\partial^2 u }{\partial y^2 }} +\frac{\partial^2 u }{\partial z^2 } \right)
 $$
 We now have a simplified equation for Reynolds-averaged flow in the $\hat{e_1}$ direction. 
-$$
+\begin{equation} \label{eq:simpl}
 \frac{\partial \overline{u}}{\partial t} 
 =  \frac{\partial }{\partial z} \overline{w' u'} 
 - \frac{1}{\rho_0} \frac{\partial \overline{p}}{\partial x} 
  + \nu \frac{\partial^2 u }{\partial z^2 }.
-$$
+\end{equation}
 Next, we apply the Boussinesq assumption, which allows us to re-write the Reynolds Stress as a function of the mean velocity gradient. Note that the $k$ term drops out as our Reynolds stress is off-diagonal,
 $$ \overline{w'u'}   =  \mu_t \left( \frac{\partial \overline{u} }{\partial z} + \frac{\partial \overline{w} }{\partial x} \right)  - \cancel{\frac{2}{3} k \delta_{13}}  = \mu_t \left( \frac{\partial \overline{u} }{\partial z} + \cancel{\frac{\partial \overline{w} }{\partial x}} \right) = \mu_t \frac{\partial \overline{u} }{\partial z}$$
-We plug in our expression for the Reynold's stress,
+We plug our expression for the Reynold's stress into Eq. \ref{eq:simpl},
 
 $$ 
 \frac{\partial \overline{u}}{\partial t} 
@@ -87,7 +87,7 @@ We can group the turbulent and molecular viscosity terms,
 $$ 
 \frac{\partial \overline{u}}{\partial t} 
 =   
-- \frac{1}{\rho_0} \frac{\partial \overline{p}}{\partial x} 
+- \frac{1}{\rho_0} \frac{\partial \overline{p}}{\partial x}  + 
  (\nu_t + \nu) \frac{\partial^2 \overline{u} }{\partial z^2 }
 $$ 
 however, since we assume that turbulent viscosity is far greater than molecular viscosity,
@@ -227,26 +227,33 @@ The function $W(z)$ is a wall-proximity function that adjusts dissipation as $z$
 
 Our governing equation for algae is given by,
 \begin{equation} \label{eq:1}
-\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right)
+\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \gamma C 
 \end{equation}
 
-where $w_s$ is the sinking or swimming speed of the algae -- it can be positive (\textit{Microcystis}) or negative (diatoms). 
+where $C$ is the concentration of algae (scalar), $\gamma$ is some source/loss term, and $w_s$ is the sinking or swimming speed of the algae: $w_s$  can be positive (\textit{Microcystis}) or negative (phytoplankton). 
 
 We break down the discretization of Equation \ref{eq:1} by the left hand (time derivative + advection) and right hand (diffusion) sides. The right-hand side is trickiest. 
 
 \subsubsection{Discretizing diffusion}
-We evaluate the diffusion term first in space. Note here that diffusion is given by $\kappa_t$, which respresents turbulent diffusion (a quantity we must solve for). Because the subscripts get messy, I'll drop the subscript $t$, but all diffusion in this equation refers to $\kappa_t$. 
+We first evaluate the diffusion term in space (neglecting $\gamma$ for now). Note here that diffusion is given by $\kappa_t$, which respresents turbulent diffusion (a quantity we will solve for in the turbulence closure). Because the subscripts get messy, I'll drop the subscript $t$, but all diffusion in this equation refers to $\kappa_t$. 
+
+We evaluate $\kappa_t \frac{\partial C}{\partial z}$ at $i+1/2$, $i- 1/2$,
 $$ 
  \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) \rightarrow \frac{1}{\Delta z} \left( \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i - 1/2} \right)
 $$ 
+but evaluate C at $i+1$, $i-1$ (this is where I will now drop the subscript on $\kappa_t$),
+$$ 
+=  \frac{1}{\Delta z} \left( \kappa_{i + 1/2} \frac{\partial C}{\partial z}_{i + 1}  - \kappa_{i - 1/2} \frac{\partial C}{\partial z}_{i - 1} \right).
+$$
 
-![Stencil for kappa & C](/Users/siennawhite/research/turbulence-model/diagrams/1x/stencil.png){height=150}
 
-We represent these $1/2$ stencil points as the average of the two neighboring cells (this is where I will now drop the subscript on $\kappa_t$),
+![Stencil for $\kappa_t$ & C](/Users/siennawhite/research/turbulence-model/diagrams/1x/stencil.png){height=200}
+
+We represent these $1/2$ stencil points for $\kappa_t$ as the average of the two neighboring cells,
  $$ \kappa_{ i + 1/2}  \approx  \frac{ \kappa_{i + 1} +  \kappa_{i} }{2} $$
  $$ \kappa_{ i - 1/2}  \approx  \frac{ \kappa_{i - 1} +  \kappa_{i} }{2} $$
 
-And same for concentration,
+And discretize the graident of $C$, 
 $$ \left(\frac{\partial C}{\partial z}\right)_{i + 1/2} \approx \frac{ C_{i+1} - C_{i}}{\Delta z} $$ 
 
 $$ \left(\frac{\partial C}{\partial z}\right)_{i - 1/2} \approx \frac{ C_{i} - C_{i-1}}{\Delta z} $$ 
@@ -256,62 +263,182 @@ $$
 
 $$ 
 = \frac{1}{2 \Delta z^2} \left(  (\kappa_{i +1} +  \kappa_{i})( C_{i+1} - C_{i}) -   (\kappa_{i - 1} +  \kappa_{i})( C_{i} - C_{i-1}) \right) $$ 
-Factor according to $C$, 
-$$ \begin{split}
+Factor according to $C$,
+
+\begin{equation} \begin{split}  \label{eq:laplacian}
 = C_{i+1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i +1} +  \kappa_{i} \right)  \right) \\  + 
  C_{i} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i +1} - 2\kappa_{i} - \kappa_{i-1} \right)  \right) \\
-+ C_{i-1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i -1} -  \kappa_{i} \right)  \right)  \end{split} $$
++ C_{i-1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i -1} -  \kappa_{i} \right)  \right)  \end{split} \end{equation}
+
+
+
 
 \subsubsection{Discretizing in time}
 
 Next we discretize  
 $$ 
-\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right)
+\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \gamma C
 $$ 
 in time. We use an implicit scheme, 
-$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1}$$ 
+$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \gamma C_i^{n+1}  $$ 
 
-We plug in our expression for the Laplacian discretized in space, evaluated at time $n+1$,
+We plug in our expression for the Laplacian discretized in space (Eq. \ref{eq:laplacian}), evaluated at time $n+1$,
 
 $$\begin{split} \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z} = C_{i+1}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i +1}^{n} +  \kappa_{i} \right)  \right) \\  + 
  C_{i}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-+ C_{i-1}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i -1}^{n} -  \kappa_{i}^{n} \right)  \right)   \end{split} $$
++ C_{i-1}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i -1}^{n} -  \kappa_{i}^{n} \right)  \right) \\ + \gamma C_i^{n+1}  \end{split} $$
 
 $$ \begin{split} C_i^{n+1} - C_i^n +  \Delta t w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z} = C_{i+1}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(\kappa_{i +1}^{n} +  \kappa_{i}^{n} \right)  \right) \\  + 
  C_{i}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-+ C_{i-1}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(-\kappa_{i -1}^{n} -  \kappa_{i}^{n} \right)  \right)   \end{split} $$
++ C_{i-1}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(-\kappa_{i -1}^{n} -  \kappa_{i}^{n} \right)  \right)  \\ + \Delta t \gamma C_i^{n+1} 
+  \end{split} $$
 
 
 This all simplifies out to, 
 $$ \begin{split}  C_i^n  =  C_{i+1}^{n+1} \left( -\frac{\Delta t}{2 \Delta z^2} (\kappa_{i}^{n} + \kappa_{i+1}^{n+1}) \right) \\
-+  C_{i}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n}) \right) \\ 
++  C_{i}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n})- \Delta t \gamma \right) \\ 
 + C_{i-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} -  \frac{\Delta t}{2 \Delta z^2} (\kappa_{i -1}^{n} +  \kappa_{i}^{n} ) \right) \end{split} $$
 
-In code, to solve this tridiagonal system, we initialize 
+In code, to solve this tridiagonal system, we initialize three vectors A, B, and C to represent the diagonals of the matrix. 
+
+![Tridiagonal matrix for implicit scheme](/Users/siennawhite/research/turbulence-model/diagrams/1x/matrix.png){height=300}
+
+
 
 ```{python}{eval|false}
-    ws = - 0.002 # settling velocity
-    dtdz = (dt/dz)
-    gamma = np.ones(N-1)* 0 # Growth + loss term !!! 
+ # Initialize empty arrays for tridiagonals of algae matox 
+    aA, bA, cA, dA = lib.initialize_abcd(N)
+
+     beta = dt / dz**2 
+ # Set up vectors (a --> i+1 ; b --> main diagonal, i ; c --> i-1)
+    ws    = diatoms.ws
+    dtdz  = dt/dz
+    gamma = diatoms.get_loss_and_growth(I_in = 350, current_concentration = Ap) # Growth + loss term
 
     aA[1:top]  = - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-    bA[1:top]  =  1 + ws*dtdz  + beta/2 *(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1])
+    bA[1:top]  =  1 + ws*dtdz  + beta/2 *(Kzp[2:top+1] + \
+      2*Kzp[1:top] + Kzp[0:top-1]) - gamma[1:top]*dt 
     cA[1:top] = -ws*dtdz  - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-    dA = Ap
-
-    # Bottom-Boundary: no flux for scalars
-    bA[0] = 1  + beta/2 * (Kzp[1] + Kzp[0]) # + ws*dtdz 
-    cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
-    dA[0] =  Ap[0]
-
-    # Top-Boundary: no flux for scalars
-    aA[top] = -ws*dtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) 
-    dA[top] = Ap[top]
-
+    dA = Ap # RHS, C_n 
 ```
 
+We now need to consider the boundary conditions. Because we are considering a scalar value, we want zero flux at the bed and at the top. 
 
+$$  \frac{C_{N} - C_{N+1}}{\Delta z } = 0 $$ 
+$$  C_{N}  = C_{N+1}$$ 
+and by the same logic, 
+$$  C_{0}  = C{-1}$$ 
+
+\subsubsection{Zero-flux at top of water column}
+Setting these terms equal in the equation,
+$$ \begin{split}  C_{N}^n  =  C_{N}^{n+1} \left( -\frac{\Delta t}{2 \Delta z^2} (\kappa_{i}^{n} + \kappa_{i+1}^{n+1}) \right) \\
++  C_{N}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n}) - \Delta t \gamma \right) \\ 
++ C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} -  \frac{\Delta t}{2 \Delta z^2} (\kappa_{i -1}^{n} +  \kappa_{i}^{n} ) \right) \end{split} $$
+we see that several terms cancel, 
+$$ \begin{split}  C_{N}^n  =  
+ C_{N}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i}^{n} + \kappa_{i-1}^{n}) - \Delta t \gamma \right) \\ 
++ C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} -  \frac{\Delta t}{2 \Delta z^2} (\kappa_{i -1}^{n} +  \kappa_{i}^{n} ) \right) \end{split} $$
+
+In code, we impose this like so, 
+```{python}{eval|false}
+    aA[top] = -ws*dtdz - beta/2 * (Kzp[top] + Kzp[top-1])
+    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) - gamma[top]*dt
+    dA[top] = Ap[top]
+``` 
+\subsubsection{Zero-flux at bed of water column}
+Now setting terms equal at $i=0$, the bed, 
+
+$$ \begin{split}  C_0^n  =  C_{1}^{n+1} \left( -\frac{\Delta t}{2 \Delta z^2} (\kappa_{i}^{n} + \kappa_{i+1}^{n+1}) \right) \\
++  C_{0}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t w_s}{\Delta z} +  \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n})- \Delta t \gamma \right) \\ 
++ C_{0}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} -  \frac{\Delta t}{2 \Delta z^2} (\kappa_{i -1}^{n} +  \kappa_{i}^{n} ) \right) \end{split} $$
+
+$$ \begin{split}  C_0^n  =  C_{1}^{n+1} \left( -\frac{\Delta t}{2 \Delta z^2} (\kappa_{i}^{n} + \kappa_{i+1}^{n+1}) \right) 
++  C_{0}^{n+1} \left(1 + \gamma_i^n + \frac{\Delta t}{2 \Delta z^2}(\kappa_{i +1}^{n} + \kappa_{i}^{n})- \Delta t \gamma \right) \end{split} $$
+
+
+In code, we impose this like so, 
+```{python}{eval|false}
+    bA[0] = 1  + beta/2 * (Kzp[1] + Kzp[0]) -  gamma[0]*dt # + ws*dtdz 
+    cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
+    dA[0] =  Ap[0]
+``` 
+
+
+\section{Phytoplankton Growth}
+Now that we have an equation for advection-diffusion of phytoplankton, we can dig into the growth and loss terms. Here, I'll follow the conventions set forth in Huisman's paper. 
+
+They discretize the light dependence of phytoplankton growth using a Monod function,
+$$ p(I) = p_{max} \frac{I}{H + I}$$ 
+$H$ is the half-saturation constant of light limited growth and $p_{max}$ is the maximum specific production rate for the species. Physically, this means that growth at any given point in the water column is the max-possible growth scaled by a proportion of the amount of available light $I$ and the species' sensitivity to light availability $H$. 
+
+The light available at any point in the water column is a function of the amount of algae above it (self-shading) and background turbidity. They express this using Lambert-Beer's law applied to nonuniform population density distributions:
+\begin{equation}
+I(z,t) = I_{in} \exp \left( - \int_0^z \left( \sum_{j=1}^n k_j \omega_j (\sigma, t) \right) d\sigma - K_{bg} z \right) 
+\end{equation}
+where $I_{in}$ is incident light intensity at the top of the water column, $k_j$ is the specific light attenuation coefficient of the phytoplankton species $j$; $K_{bg}$ is the background turbitiy (eg, not phytoplankton) and $\sigma$ is an integration variable.
+
+In code, we calculate that with the following function:
+```{python}{eval|false}
+def self_shading(ListofAlgae, I_in, turbidity):
+    ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
+    corrected_z = (-1) * z # We want water depth [cm] to be zero 
+    # at the top, 20 at the bottom (positive numbers)
+    kxC = np.zeros(N)
+    for species in ListofAlgae:
+        kxC += species.k * species.c
+
+    I = np.zeros(N)
+    vector = kxC - (turbidity*corrected_z)
+    for i in (range(N)):
+        I[i] = np.sum(vector[i:-1]) * z[i]
+
+    I[I<0] = 1e-10
+    I = I_in * np.exp(-I)   
+
+```
+![Algae Concentration with constant light](Algae Concentration with constant light.png){height=250}
+
+![Algae Concentration with diurnal light](Algae Concentration with diurnal light.png){height=250}
+
+
+\newpage
+
+We can write the population for phytoplankton $C$ as
+\begin{equation}
+\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}  = \kappa \frac{\partial^2 C}{\partial z^2} + \Gamma(z)C 
+\end{equation}
+
+where $\Gamma(z)$ is the source + sink term (e.g., mortality + growth). 
+$$ \Gamma(z) =  p_i(I) - L_i$$ 
+and $I(z,t)$ is the light intensity at depth $z$ and time $t$.
+Thus, we expect $\Gamma$ to vary as a function of depth and time.
+
+
+Monod equation for phytop
+
+Huisman's equation:
+\begin{equation}
+\frac{\partial \omega_i}{\partial t} = p_i(I)\omega_i - L_i \omega_i + v_i \frac{\partial \omega_i}{\partial z} + D \frac{\partial^2 \omega_i}{\partial z^2} \end{equation}
+
+
+The boundary condition for phytoplankton at the top and bottom of the water column is zero-flux:
+$$ v_i \omega_i(z,t)  + D \frac{\partial \omega_i}{\partial z} = 0 \mid_{z=0}$$ 
+
+The TKE Equation can be expressed as 
+\begin{equation}
+\frac{\partial k}{\partial t} + \bar{U_j}
+\end{equation}
+
+The density profile is calculated according to 
+\begin{equation}
+\rho = \rho_0 (1 - \alpha (C - T_0))
+\end{equation}
+
+
+
+
+
+\newpage
 
 \subsection{Turbulent kinetic energy equation}
 $$ 
@@ -337,106 +464,6 @@ $$ \frac{Q_i^{n+1} - Q_i^{n}}{\Delta t} =
 We write the dissipation as a mixed discretization,
 $$ - 2 \left(\frac{\sqrt{Q}}{B_1 l} \right)^n_i \cdot Q_i^{n+1}$$ 
 where it's partially linearized and partially explicit.
-\section{Phytoplankton Growth}
-
-We can write the population for phytoplankton $C$ as
-\begin{equation}
-\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}  = \kappa \frac{\partial^2 C}{\partial z^2} + \Gamma(z)C 
-\end{equation}
-
-where $\Gamma(z)$ is the source + sink term (e.g., mortality + growth). 
-$$ \Gamma(z) =  p_i(I) - L_i$$ 
-and $I(z,t)$ is the light intensity at depth $z$ and time $t$.
-Thus, we expect $\Gamma$ to vary as a function of depth and time.
-
-We start to discretize the population for phytoplankton $C$ as
-\begin{equation}
-\frac{C_{i}^{n+1} - C_{i}^{n}}{\Delta t} + w_s \frac{C_{i}^{n+1} - C_{i-1}^{n+1}}{ \Delta z} = \frac{\kappa }{\Delta z^2} \left( C_{i+1}^{n+1} - 2 C_{i}^{n+1} + C_{i-1}^{n+1} \right) + \Gamma(z) C_{i}^{n+1}
-\end{equation}
-$$ - \frac{ C_{i}^{n}}{\Delta t} = - \frac{C_{i}^{n+1}}{\Delta t} - w_s \frac{C_{i}^{n+1} - C_{i-1}^{n+1}}{ \Delta z} + \frac{\kappa }{\Delta z^2} \left( C_{i+1}^{n+1} - 2 C_{i}^{n+1} + C_{i-1}^{n+1} \right) + \Gamma(z) C_{i}^{n+1} $$
-Group by index,
-
-$$ - \frac{ C_{i}^{n}}{\Delta t} = - \frac{1}{\Delta t} C_{i}^{n+1} -  \frac{w_s}{ \Delta z} C_{i}^{n+1} +  \frac{w_s}{ \Delta z} C_{i-1}^{n+1} + \frac{\kappa }{\Delta z^2}  C_{i+1}^{n+1}  - \frac{2 \kappa }{\Delta z^2}  C_{i}^{n+1} + \frac{\kappa }{\Delta z^2} C_{i-1}^{n+1} + \Gamma(z) C_{i}^{n+1} $$
-$$ - \frac{ C_{i}^{n}}{\Delta t} = \left(- \frac{1}{\Delta t} -  \frac{w_s}{ \Delta z} - \frac{2 \kappa }{\Delta z^2} + \Gamma(z)  \right) C_{i}^{n+1}  + \left(\frac{w_s}{ \Delta z} + \frac{\kappa }{\Delta z^2} \right) C_{i-1}^{n+1} + \left(\frac{\kappa }{\Delta z^2} \right)  C_{i+1}^{n+1}   +  $$
-$$ C_{i}^{n} =  \left( \frac{\Delta t}{\Delta t} + \frac{w_s \Delta t}{ \Delta z} + \frac{2 \kappa \Delta t}{\Delta z^2} - \Delta t\Gamma(z)  \right) C_{i}^{n+1}  + \left(-\frac{w_s \Delta t}{ \Delta z} - \frac{\kappa \Delta t}{\Delta z^2} \right) C_{i-1}^{n+1} + \left(-\frac{\kappa \Delta t}{\Delta z^2} \right)  C_{i+1}^{n+1}   +  $$
-
-
-$$\frac{C_{i}^{n+1} - C_{i}^{n}}{\Delta t} = \frac{\kappa t}{\Delta z^2} \left( C_{i+1}^{n+1} - 2 C_{i}^{n+1} + C_{i-1}^{n+1} \right)  $$ 
-And move all the terms for the next time step (n+1) to the RHS,
-$$- C_{i}^{n}{\Delta t} = -\frac{C_{i}^{n+1}}{d}  \frac{\kappa t}{\Delta z^2} \left( C_{i+1}^{n+1} - 2 C_{i}^{n+1} + C_{i-1}^{n+1} \right)  $$
-
-The equation for the boundary condition is zero-flux,
-$$ 
-w_s C + \kappa \frac{\partial C}{\partial z}  = 0
-$$ 
-$$
-w_s C_{i}^{n+1} + \kappa \frac{ C_{i}^{n+1} -  C_{i-1}^{n+1}}{\Delta z} = 0 
-$$
-
-Monod equation for phytop
-
-Huisman's equation:
-\begin{equation}
-\frac{\partial \omega_i}{\partial t} = p_i(I)\omega_i - L_i \omega_i + v_i \frac{\partial \omega_i}{\partial z} + D \frac{\partial^2 \omega_i}{\partial z^2} \end{equation}
-
-They discretize the light dependence of phytoplankton growth using a Monod function 
-$$ p_i(I) = p_{max,i} \frac{I}{H_i + I}$$ 
-$H_i$ is the half-saturation constant of light lmited growth and $p_{max,i}$ is the maximum specific production rate for species $i$. 
- 
-
-Lambert-Beer's law applied to nonuniform population density distributions:
-\begin{equation}
-I(z,t) = I_{in} \exp \left( - \int_0^z \left( \sum_{j=1}^n k_j \omega_j (\sigma, t) \right) d\sigma - K_{bg} z \right) 
-\end{equation}
-where $I_{in}$ is incident light intensity at the top of the water column, $k_j$ is the specific light attenuation coefficient of the phytoplankton species $j$; $K_{bg}$ is the background turbitiy (eg, not phytoplankton) and $\sigma$ is an integration variable.
-
-The boundary condition for phytoplankton at the top and bottom of the water column is zero-flux:
-$$ v_i \omega_i(z,t)  + D \frac{\partial \omega_i}{\partial z} = 0 \mid_{z=0}$$ 
-
-\section{Problem 3}
-Write the equation of motion for a velocity fluctuation. 
-
-We start by recalling the equation of motion for momentum, after performing Reynold's decomposition and splitting components into their mean and fluctuating parts...
-
-
-$$ \partial_t (\bar{u_j} + u_j') + (\bar{u_i} + u_i') \partial_i (\bar{u_j} + u_j') = - \frac{1}{\rho} \partial_j (\bar{P} +P') + \nu \partial_k \partial_k (\bar{u_j} + u_j')$$ 
-
-\begin{equation}
-     \partial_t \bar{u_j}  + \partial_t u_j' + \bar{u_i} \partial_i \bar{u_j} + \bar{u_i} \partial_i u_j' + u_i' \partial_i \bar{u_j}  + u_i' \partial_i u_j' = 
-     - \frac{1}{\rho} \partial_j \bar{P} - \frac{1}{\rho} \partial_j P' + \nu \partial_k \partial_k \bar{u_j} +\nu \partial_k \partial_k u_j'
-\end{equation}
-
-Now we can subtract our RANS equation for momentum from this equation to isolate the turbulent components ($u'$). Recall our RANS equation for momentum reads
-
-\begin{equation}
-     \partial_t \bar{u_j}  + \bar{u_i} \partial_i \bar{u_j}  =  - \frac{1}{\rho} \partial_j \bar{P}  + \nu \partial_k \partial_k \bar{u_j} -  \partial_i \overline{u_j'u_i'}  . 
-\end{equation}
-
-Subtracting Equation (2) from Equation (1) yields
-\begin{equation}
-     \partial_t u_j' + \bar{u_i} \partial_i u_j' + u_i' \partial_i \bar{u_j}  + u_i' \partial_i u_j' =  - \frac{1}{\rho} \partial_j P'  +\nu \partial_k \partial_k u_j' + \partial_i \overline{u_j'u_i'}  . 
-\end{equation}
-
-\begin{equation}
-     \partial_t u_j' + \bar{u_i} \partial_i u_j'  =  - \frac{1}{\rho} \partial_j P'  +\nu \partial_k \partial_k u_j' + \partial_i \overline{u_j'u_i'} - u_i' \partial_i \bar{u_j}  - u_i' \partial_i u_j'  . 
-\end{equation}
-
-
-The TKE Equation can be expressed as 
-\begin{equation}
-\frac{\partial k}{\partial t} + \bar{U_j}
-\end{equation}
-
-The density profile is calculated according to 
-\begin{equation}
-\rho = \rho_0 (1 - \alpha (C - T_0))
-\end{equation}
-
-
-
-
-
-\newpage
 
 <!-- END  -->
 
@@ -530,160 +557,4 @@ $$ u_* = U_{bed} \sqrt{C_d}$$
 $$G_h = - \left(\frac{N_{BV} * L}{Q + Small} \right)^2$$
 
 $$ diss= 2 \frac{dt * \sqrt{Q^2}}{B_1 L_p} $$ 
-
-
-\subsection{Derive equation for Reynold's Stress Transport}
-
-We multiply this equation by $u_k'$, expanding this into a 3x3 tensor equation. 
-\begin{equation}
-     u_k' \partial_t u_j' + u_k' \bar{u_i} \partial_i u_j'  =  - u_k' \frac{1}{\rho} \partial_j P'  + u_k' \nu \partial_z \partial_z u_j' + u_k' \partial_i \overline{u_j'u_i'} - u_k' u_i' \partial_i \bar{u_j}  - u_k' u_i' \partial_i u_j'  . 
-\end{equation}
-
-Reynold's Average: 
-\begin{equation}
-     \langle u_k' \partial_t u_j' \rangle  +
-     \langle u_k' \bar{u_i} \partial_i u_j' \rangle  =  
-      - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle + 
-     \langle u_k' \nu \partial_z \partial_z u_j' \rangle  + 
-     \langle u_k' \partial_i \overline{u_j'u_i'} \rangle - 
-     \langle u_k' u_i' \partial_i \bar{u_j} \rangle - 
-     \langle u_k' u_i' \partial_i u_j' \rangle . 
-\end{equation}
-The divergence of the averaged Reynold's Stress goes to zero, as it's an averaged quantity multiplied by a fluctuating value 
-
-\begin{equation}
-     \langle u_k' \partial_t u_j' \rangle  +
-     \langle u_k' \bar{u_i} \partial_i u_j' \rangle  =  
-      - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle + 
-     \langle u_k' \nu \partial_z \partial_z u_j' \rangle  + 
-     \langle u_k' u_i' \partial_i \bar{u_j} \rangle - 
-     \langle u_k' u_i' \partial_i u_j' \rangle . 
-\end{equation}
-
-We now take a second equation, flip the indices 
-\begin{equation}
-     \langle u_j' \partial_t u_k' \rangle  +
-     \langle u_j' \bar{u_i} \partial_i u_k' \rangle  =  
-      - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle + 
-     \langle u_j' \nu \partial_z \partial_z u_k' \rangle  + 
-     \langle u_j' u_i' \partial_i \bar{u_k} \rangle - 
-     \langle u_j' u_i' \partial_i u_k' \rangle 
-\end{equation}
-
-and add these together. To reduce the messiness, we will first look at the LHS,
-
-\begin{equation}
-     \langle u_j' \partial_t u_k' \rangle  +
-     \langle u_j' \bar{u_i} \partial_i u_k' \rangle  +
-     \langle u_k' \partial_t u_j' \rangle  +
-     \langle u_k' \bar{u_i} \partial_i u_j' \rangle.
-\end{equation}
-
-To simply, we apply the reverse product rule (ie, given we know)
-$$ \frac{\partial}{\partial t} \langle u_k' u_j' \rangle               = \langle u_k' \frac{\partial}{\partial t}  u_j' \rangle + 
-    \langle u_j' \frac{\partial}{\partial t}  u_k' \rangle $$
-    
-and 
-$$ \bar{u_i}\frac{\partial}{\partial x_i} \langle u_k' u_j' \rangle  = \bar{u_i} \langle u_k' \frac{\partial}{\partial x_i} u_j' \rangle  + \bar{u_i} \langle  u_j' \frac{\partial}{\partial x_i} u_k' \rangle,
-$$ 
-
-we can rewrite this LHS as
-
-$$ \partial_t \langle u_k' u_j' \rangle  + \bar{u_i} \partial_i \langle u_k' u_j' \rangle. $$
-
-Now onto the fun bit... the RHS. Currently we have
-
-$$ - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle  
-     - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle  
-    + \langle u_k' \nu \partial_z \partial_z u_j' \rangle  
-   + \langle u_j' \nu \partial_z \partial_z u_k' \rangle  
-    +   \langle u_k' u_i' \partial_i \bar{u_j} \rangle 
-    + \langle u_j' u_i' \partial_i \bar{u_k} \rangle  
-   -  \langle u_k' u_i' \partial_i u_j' \rangle  
-  - \langle u_j' u_i' \partial_i u_k' \rangle . 
-$$ 
-
-Some of this follows the same pattern (reverse product rule), allowing us to expand our fluctuating pressure term. Consider that 
-$$ \frac{\partial }{\partial x_j} \langle u_k' P' \rangle =
-\langle u_k' \partial_j P' \rangle  + \langle P' \partial_j u_k' \rangle.$$
-
-We substitute 
-$$ - \langle u_k' \frac{1}{\rho} \partial_j P' \rangle = 
- \frac{1}{\rho} \left( \langle P' \partial_j u_k' \rangle - \partial_j \langle u_k' P' \rangle \right) $$ 
-
-$$ - \langle u_j' \frac{1}{\rho} \partial_k P' \rangle = 
- \frac{1}{\rho} \left( \langle P' \partial_k u_j' \rangle - \partial_k \langle u_j' P' \rangle \right) $$ 
-
- 
- Next we identify the advection of mean flow by the Reynolds stress, i.e., the terms 
- 
-   $$    \langle u_k' u_i' \partial_i \bar{u_j} \rangle 
-    + \langle u_j' u_i' \partial_i \bar{u_k} \rangle. $$ 
-
-We won't rearrange these terms for now, since they're already in a form involving an averaged Reynold's stress. The viscous dissipation, however, looks like an interesting challenge, 
-
- $$ \nu  \langle u_k' \partial_z \partial_z u_j' \rangle  
-   +  \nu \langle u_j' \partial_z \partial_z u_k' \rangle. $$ 
-   
-We would like to write this as the diffusion of the Reynolds stress. We expect such diffusion to look like 
-$$ \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle ,$$ 
-
-which would expand (ignoring the coefficient) as
-
-$$ \partial_z \left( \partial_z \langle  u_k'  u_j' \rangle \right) = \partial_z  ( \langle u_k' \partial_z  u_j' \rangle + \langle u_j' \partial_z u_k' \rangle) $$
-
-$$ =  \langle u_k' \partial_z \partial_z u_j' \rangle + \langle \partial_z u_j'\partial_z u_k' \rangle +  \langle \partial_z u_j'\partial_z u_k' \rangle + \langle u_j' \partial_z  \partial_z u_k' \rangle.$$ 
- 
- We relate this to the term in the equation by substituting 
- 
-$$ \nu  \langle u_k' \partial_z \partial_z u_j' \rangle  
-+  \nu \langle u_j' \partial_z \partial_z u_k' \rangle =  \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle - 2 \nu \langle \partial_z u_j'\partial_z u_k' \rangle.
-$$
-
-The last terms we want to deal with are the advection of turbulent fluctuations by the Reynolds stress itself, 
-  $$  -  \langle u_k' u_i' \partial_i u_j' \rangle  
-  - \langle u_j' u_i' \partial_i u_k' \rangle . $$ 
-  
-  We recognize this pattern, and can apply reverse-product-rule. The last step is due to impressibility (allows us to put $u_i$ inside the derivative).  
-    $$  -  \langle u_i' u_k'  \partial_i u_j' \rangle  
-  - \langle u_i' u_j' \partial_i u_k' \rangle =  -  \langle u_i' \partial_i u_k' u_j' \rangle  = -  \langle  \partial_i u_k' u_j' u_i' \rangle $$ 
-  
-  
-Now we can put together all the steps. For notation in this last step, I am using capital $U$ to denote an averaged velocity (instead of an overbar). 
-
-\begin{equation}
-    \partial_t \langle u_k' u_j' \rangle  + U_i \partial_i \langle u_k' u_j' \rangle= 
-\end{equation}
-
-    % triple correlation 
-  $$  -   \partial_i \langle  u_k' u_j' u_i' \rangle 
-    % transport mean flow by RE 
-    +  \langle u_k' u_i'\rangle  \partial_i U_j  
-    + \langle u_j' u_i' \rangle \partial_i U_k  
-    $$ 
-    
-     % viscous stress
- $$  + \nu \partial_z \partial_z \langle  u_k'  u_j' \rangle - 2 \nu \langle \partial_z u_j'\partial_z u_k' \rangle +
-    % pressure 
-\frac{1}{\rho} \left( P' \langle \partial_j u_k' + \partial_k u_j' \rangle - \partial_j \langle u_k' P' \rangle  - \partial_k \langle u_j' P' \rangle \right)  $$ 
-
-
-We can define all these terms and define them from a physics perspective. Starting left to right, 
-
-\begin{enumerate}
-    \item Storage / time variation of the Reynold's stress
-    \item Advection of the Reynold's stress by the mean flow
-    \item Triple Correlation: transport of Reynold's stress by turbulent motions. 
-    \item Advection of flow by Reynold's stress. This is also seen as a production term, as it captures the conversion of turbulence from the mean flow through shear. 
-    \item (shear production)
-    \item Diffusion of mometum from viscosity / molecular interactions. 
-    \item This is a very exciting term! It is the viscous dissipation term and it \textit{directly destroys} Reynold's stress through conversion to heat.  
-    \item These next two terms are very interesting. Franko spent a long time talking to me about this one before he graduated, and said if I understood this term, I would ``understand some grand part of turbulence." Whether or not that is true has yet to be seen. However, this is the pressure-strain correlation. It resembles the rate-of-strain tensor, and similar to $S_{ij},$ this tensor is traceless. This term cannot create or destroy turbulence, however, it often performs what is called ``pressure scrambling." One of these terms will anisotropize the turbulence (``fast term") and the other isotropizes the flow (``slow term"). 
-    \item These terms are transport by a pressure-fluctuation correlation term. 
-\end{enumerate}
-
-
-
-
-
 

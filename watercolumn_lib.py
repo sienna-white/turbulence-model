@@ -30,7 +30,7 @@ variable2units['nu_t'] = r'm$^2$/s'
 variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV'] = r'1/s'
-variable2units['algae'] = r'?'
+variable2units['algae'] = r'10$^6$ cells/m$^2$'
 
 
 def initialize_abcd(N):
@@ -110,3 +110,4 @@ class SavedProfiles:
         # ax.hlines(0, color = 'k', linestyle = '--')
         ax.set_title(variable2name[variable])
         plt.show()
+        return ax 

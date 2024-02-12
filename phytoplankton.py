@@ -41,6 +41,7 @@ class Algae_Species:
     def set_initial_concentration(self, N, init):
         ''' Set initial concentration of species'''
         self.c = np.zeros(N) + init 
+        self.c = np.linspace(0,init,N)
 
     def hour2second(self, input_rate):
         ''' Convert per-hour rate to per-second rate'''
@@ -59,11 +60,16 @@ class Algae_Species:
         return pi 
 
     
+    def get_light_intensity(self, I_in):
+        background_turbidity =  0.26
+        I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity)
+        return I, photic_depth
+    
     def get_loss_and_growth(self, I_in, current_concentration):
         ''' Get loss and growth rates for a given time step'''
-        background_turbidity =  0.26
+
         self.c = current_concentration
-        I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity)
+        I, photic_depth = self.get_light_intensity(I_in)
         growth = self.monod_growth_rate(I) 
         loss   = self.Li
         net = growth - loss
@@ -84,13 +90,15 @@ def self_shading(ListofAlgae, I_in, turbidity):
 
     I = np.zeros(N)
     vector = kxC - (turbidity*corrected_z)
-    print(vector)
     for i in (range(N)):
         I[i] = np.sum(vector[i:-1]) * z[i]
 
     I[I<0] = 1e-10
     I = I_in * np.exp(-I)   
-    photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
+    try: 
+        photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
+    except:
+        photic_depth = 0
     # print("Photic depth is %2.2f meters" % photic_depth)
 
     # fig = plt.figure()

@@ -38,14 +38,14 @@ than passing a bunch of arrays around between functions.
 '''
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 20
+isave = 10
 
 # Spatial Parameters 
 N = 80    # number of grid points
 H = 20    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
-dt = 1 #60   # (seconds) size of time step 
-M = 400# 400  # number of time steps 
+dt = 60   # (seconds) size of time step 
+M = 100 # 400  # number of time steps 
 
 # Physical parameters 
 z0 = 0.01         # Bottom roughness [m]
@@ -60,16 +60,21 @@ rho0 = 1000       # Water density [kg/m^3]
 # Algae parameters 
 diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                    pmax = 0.05,     # maximum specific growth rate [1/hour]
-                   ws = 0,          # vertical velocity [cm/hour]
+                   ws = -200,          # vertical velocity [cm/hour]
                    Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                    Li = 0.006,      # specific loss rate [1/hour]
                    name = "Diatoms")
 
-diatoms.set_initial_concentration(N, init=10)
+diatoms.set_initial_concentration(N, init=100)
 diatoms.set_vertical_grid(H, N, dz)
 
 background_turbidity =  0.16
 I_in = 350 
+
+
+print('Ws is %f m/s' % diatoms.ws)
+courant = abs(diatoms.ws * dt)/dz
+assert(courant < 1)
 
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
@@ -80,7 +85,7 @@ base_temp = 15   # Temperature of water column [deg C]
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
 Px0 = 0.001  # Magnitude on pressure gradient forcing
-T_Px = 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 # Mellor-Yamada closure parameters. All dimensionless --> no need to change  
 A1=0.92 # [-]
@@ -289,30 +294,29 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     #***************************************************************************
     #   Advance algae! // need to figure out to include settling velocity / source + sink
     #***************************************************************************
-    ws    = diatoms.ws
+    ws    = diatoms.ws 
     dtdz  = dt/dz
     gamma = diatoms.get_loss_and_growth(I_in = 350, current_concentration = Ap)
-    print(gamma*dt)
-    # np.ones(N)* 1e-5 # Growth + loss term !!! 
 
-    aA[1:top]  = - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-    bA[1:top]  =  1 + ws*dtdz  + beta/2 *(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) + gamma[1:top]*dt 
-    cA[1:top] = -ws*dtdz  - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+    aA[1:top]  = -beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
+    bA[1:top]  = 1 + ws*dtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+    cA[1:top]  = -ws*dtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
     dA = Ap
 
     # Bottom-Boundary: no flux for scalars
-    bA[0] = 1  + beta/2 * (Kzp[1] + Kzp[0]) +  gamma[0]*dt # + ws*dtdz 
+    bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0])  # + ws*dtdz 
     cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
     dA[0] =  Ap[0]
 
     # Top-Boundary: no flux for scalars
     aA[top] = -ws*dtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) + gamma[top]*dt
+    bA[top] = 1 + ws*dtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) - gamma[top]*dt
     dA[top] = Ap[top]
 
     # Thomas algorithm to solve for C
     algae = lib.TDMA(aA, bA, cA, dA, N)
-    algae[algae < 0] = SMALL
+    algae[algae < 0] = SMALL  
+    
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
@@ -418,7 +422,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    # print(algae)
+    print(sum(algae))
 
     return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae
 
@@ -440,9 +444,9 @@ for m in range(1,M):
 print(time.time()  - t1) 
 
 
-saved_profiles.plot_profiles('U', skip=2)
-saved_profiles.plot_profiles('algae', skip=2)
+# saved_profiles.plot_profiles('U', skip=2)
+a1 = saved_profiles.plot_profiles('algae', skip=2)
 # saved_profiles.plot_profiles('C', skip=2)
 # saved_profiles.plot_profiles('nu_t', skip=2)
 # saved_profiles.plot_profiles('L', skip=2)
-saved_profiles.plot_profiles('Kz', skip=2)
+# saved_profiles.plot_profiles('Kz', skip=2)
