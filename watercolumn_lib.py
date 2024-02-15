@@ -14,8 +14,8 @@ variable2name['Q2L'] = 'turbulent kinetic energy times a length scale'
 variable2name['rho'] = 'density'
 variable2name['L'] = 'length scale'
 variable2name['nu_t'] = r'turbulent viscosity ($\nu_t$)'
-variable2name['Kz'] = r'turbulent diffusivity ($K_z$)'
-variable2name['Kq'] = r'turbulent diffusivity ($K_q$)'
+variable2name['Kz'] = r'turbulent diffusivity ($\kappa_z$)'
+variable2name['Kq'] = r'turbulent diffusivity ($\kappa_q$)'
 variable2name['N_BV'] = r'Brunt-Vaisala frequency ($N_{BV}$)'
 variable2name['algae'] = r'Algae Concentration'
 
@@ -87,8 +87,16 @@ class SavedProfiles:
         self.saved_profiles['time'][profile_num] = time
 
     def plot_profiles(self, variable, skip=1):
-        fig, ax = plt.figure(), plt.gca()
+
+        def seconds2hours(seconds):
+            return seconds/3600
+        
+        fig, ax = plt.figure(figsize=(8,4)), plt.gca()
         plots = np.arange(0, self.n_profiles, skip)
+        if len(plots)>6: 
+            legend_ind = np.floor(len(plots)/6)
+        else:
+            legend_ind = 1
         for i, ind in enumerate(plots):
             if self.saved_profiles['time'][ind] == 0:
                  ax.plot(self.saved_profiles[variable][:,ind], 
@@ -97,17 +105,25 @@ class SavedProfiles:
                     linewidth = 2, 
                     label='Initial condition')
             else:
-                ax.plot(self.saved_profiles[variable][:,ind], 
-                        self.z, '-',
-                        color = mpl.cm.viridis(i/len(plots)),
-                        linewidth = 2.5, 
-                        alpha = 0.6,
-                        label='t = %d sec' % self.saved_profiles['time'][ind],)
-        ax.legend()
+                if i%legend_ind==0: 
+                    ax.plot(self.saved_profiles[variable][:,ind], 
+                            self.z, '-',
+                            color = mpl.cm.viridis(i/len(plots)),
+                            linewidth = 2.5, 
+                            alpha = 0.6,
+                            label='t = %d hr' % seconds2hours(self.saved_profiles['time'][ind]))
+                else:
+                    ax.plot(self.saved_profiles[variable][:,ind], 
+                            self.z, '-',
+                            color = mpl.cm.viridis(i/len(plots)),
+                            linewidth = 2.5, 
+                            alpha = 0.6)
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
         ax.grid(alpha = 0.5)
         ax.set_ylabel('Depth (m)')
         ax.set_xlabel('%s (%s)' % (variable2name[variable], variable2units[variable]))
         # ax.hlines(0, color = 'k', linestyle = '--')
         ax.set_title(variable2name[variable])
+        plt.tight_layout()
         plt.show()
-        return ax 
+        return fig, ax  

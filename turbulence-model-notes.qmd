@@ -377,7 +377,7 @@ I(z,t) = I_{in} \exp \left( - \int_0^z \left( \sum_{j=1}^n k_j \omega_j (\sigma,
 \end{equation}
 where $I_{in}$ is incident light intensity at the top of the water column, $k_j$ is the specific light attenuation coefficient of the phytoplankton species $j$; $K_{bg}$ is the background turbitiy (eg, not phytoplankton) and $\sigma$ is an integration variable.
 
-In code, we calculate that with the following function:
+In code, we calculate that with the following function, 
 ```{python}{eval|false}
 def self_shading(ListofAlgae, I_in, turbidity):
     ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
@@ -394,16 +394,27 @@ def self_shading(ListofAlgae, I_in, turbidity):
 
     I[I<0] = 1e-10
     I = I_in * np.exp(-I)   
-
 ```
+we can calculate the photic depth with, 
+
+```{python}{eval|false}
+# Get first element where light is less than 90% of I_in 
+photic_depth =  z[I<(0.9 * I_in)][-1] 
+```
+
+Some examples of what algal growth looks like, using common parameters sourced from the Huisman paper, are shown below. In these examples there's no fluid motion at all (or particle sinking)-- just looking purely at growth rate as a function of light. With constant light, we see that algal growth increases monotonically -- within three days the population has increased over four-fold. Note that below the photic zone, however, algal are dying (albeit much more slowly). Thus, the net change in \textit{total algal population} is determined by the \textit{ratio of the photic zone} to the rest of the water column (assuming algae are dispersed uniformly). While growth may expload at the surface, if the rest of the algae are steadily dying, the net population could decline. 
+
 ![Algae Concentration with constant light](Algae Concentration with constant light.png){height=250}
+
+We can also impose a more-realistic light field which varies as a function of time (e.g., the diurnal light cycle.) Now, the algae are only exposed to light for 12 hours a day. They resulting figure shows a far more variable algal mass. If we sum the concentration over the water column, we see that mass is declining.  
 
 ![Algae Concentration with diurnal light](Algae Concentration with diurnal light.png){height=250}
 
+![Total algal mass with diurnal light over time.](/Users/siennawhite/research/turbulence-model/Algae Mass with diurnal light.png){height=200}
 
 \newpage
 
-We can write the population for phytoplankton $C$ as
+<!-- We can write the population for phytoplankton $C$ as
 \begin{equation}
 \frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}  = \kappa \frac{\partial^2 C}{\partial z^2} + \Gamma(z)C 
 \end{equation}
@@ -411,31 +422,16 @@ We can write the population for phytoplankton $C$ as
 where $\Gamma(z)$ is the source + sink term (e.g., mortality + growth). 
 $$ \Gamma(z) =  p_i(I) - L_i$$ 
 and $I(z,t)$ is the light intensity at depth $z$ and time $t$.
-Thus, we expect $\Gamma$ to vary as a function of depth and time.
+Thus, we expect $\Gamma$ to vary as a function of depth and time. -->
 
 
-Monod equation for phytop
+\section{Combining growth with advection-diffusion}
 
-Huisman's equation:
-\begin{equation}
-\frac{\partial \omega_i}{\partial t} = p_i(I)\omega_i - L_i \omega_i + v_i \frac{\partial \omega_i}{\partial z} + D \frac{\partial^2 \omega_i}{\partial z^2} \end{equation}
+![Algae Concentration with diurnal light](U.png){height=250}
 
+![Algae Concentration with diurnal light](kappa_z.png){height=250}
 
-The boundary condition for phytoplankton at the top and bottom of the water column is zero-flux:
-$$ v_i \omega_i(z,t)  + D \frac{\partial \omega_i}{\partial z} = 0 \mid_{z=0}$$ 
-
-The TKE Equation can be expressed as 
-\begin{equation}
-\frac{\partial k}{\partial t} + \bar{U_j}
-\end{equation}
-
-The density profile is calculated according to 
-\begin{equation}
-\rho = \rho_0 (1 - \alpha (C - T_0))
-\end{equation}
-
-
-
+![Algae Concentration with diurnal light](algae.png){height=250}
 
 
 \newpage

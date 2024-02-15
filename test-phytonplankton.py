@@ -24,7 +24,7 @@ diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm
                    Li = 0.006,      # specific loss rate [1/hour]
                    name = "Diatoms")
 
-diatoms.set_initial_concentration(N, init=5)
+diatoms.set_initial_concentration(N, init=10)
 diatoms.set_vertical_grid(H, N, dz)
 
 
@@ -53,13 +53,17 @@ ax[2].set_xlabel(r'Concentration of Algae')
 
 total_time_steps = 4500
 interval = 500 
+diurnal = True
+
+net = [] 
 for t in range(total_time_steps):
     past_concentration = diatoms.c
-    I_in = diurnal_light(t*dt, I_max=350)
+    if diurnal:
+        I_in = diurnal_light(t*dt, I_max=350)
     I, photic_depth = diatoms.get_light_intensity(I_in)
     gamma = diatoms.get_loss_and_growth(I_in =I, current_concentration = past_concentration)
     diatoms.c = past_concentration + (gamma * past_concentration * dt) 
-
+    net.append(np.sum(diatoms.c))
     if t % interval == 0:
         T = t/60 
         c = mpl.cm.cividis((t/interval)/(total_time_steps/interval))
@@ -76,8 +80,23 @@ for axis in ax:
     axis.legend(frameon=False)
     axis.set_ylim(-H,0)
 ax[0].set_ylabel('Depth (m)')
+ax[1].ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
+if diurnal:
+    fig.savefig('Algae Concentration with diurnal light.png')
+else:
+    fig.savefig('Algae Concentration with constant light.png')
 
-# fig.savefig('Algae Concentration with diurnal light.png')
-# fig.savefig('Algae Concentration with constant light.png')
+fig2 = plt.figure()
+plt.plot(range(total_time_steps), net, color = 'skyblue', linewidth = 4)
+ax = plt.gca()
+ax.grid(alpha = 0.5)
+ax.set_xlabel('Time (minutes)')
+ax.set_xlim(0, total_time_steps)
+ax.set_ylabel('Total Algal Mass')
+if diurnal:
+    fig2.savefig('Algae Mass with diurnal light.png')
+else:
+    fig2.savefig('Algae Mass with constant light.png')
+
 plt.show()

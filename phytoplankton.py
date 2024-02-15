@@ -31,6 +31,7 @@ class Algae_Species:
         self.Hi = Hi
         self.Li = self.hour2second(Li)
         self.name = name
+        self.total_mass = [] 
 
     def set_vertical_grid(self, H, N, dz):
         self.N = N
@@ -74,6 +75,11 @@ class Algae_Species:
         loss   = self.Li
         net = growth - loss
         return net 
+    
+    def save_total_mass(self):
+        ''' Save total mass of species at each time step'''
+        self.total_mass.append(np.sum(self.c)) 
+
     
 
 # Lives outside the class since we need to calculate light intensity for all species 

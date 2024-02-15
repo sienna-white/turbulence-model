@@ -21,9 +21,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import watercolumn_lib as lib
-
 from phytoplankton import Algae_Species
 import time
+t1 = time.time()  # Time our simluation 
+
+
 '''
 Because the indexing is a little confusing in Python vs. Matlab (0 is the bed, N-1 is 
 the top of the water column), and then the point below the top is N-2, when indexing 
@@ -45,7 +47,7 @@ N = 80    # number of grid points
 H = 20    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 60   # (seconds) size of time step 
-M = 100 # 400  # number of time steps 
+M = 400 # 400  # number of time steps 
 
 # Physical parameters 
 z0 = 0.01         # Bottom roughness [m]
@@ -58,6 +60,9 @@ nu = 1e-6         # Kinematic viscosity [m^2/s]
 rho0 = 1000       # Water density [kg/m^3]
 
 # Algae parameters 
+background_turbidity =  0.16
+I_in = 350 
+
 diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                    pmax = 0.05,     # maximum specific growth rate [1/hour]
                    ws = -200,          # vertical velocity [cm/hour]
@@ -67,12 +72,7 @@ diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm
 
 diatoms.set_initial_concentration(N, init=100)
 diatoms.set_vertical_grid(H, N, dz)
-
-background_turbidity =  0.16
-I_in = 350 
-
-
-print('Ws is %f m/s' % diatoms.ws)
+algae = diatoms.c
 courant = abs(diatoms.ws * dt)/dz
 assert(courant < 1)
 
@@ -84,9 +84,8 @@ alpha  = 0.0     # Thermal expansivity, set to zero for passive scalar case
 base_temp = 15   # Temperature of water column [deg C]
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 0.001  # Magnitude on pressure gradient forcing
+Px0 = 0.0001  # Magnitude on pressure gradient forcing
 T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
-
 # Mellor-Yamada closure parameters. All dimensionless --> no need to change  
 A1=0.92 # [-]
 A2=0.74 # [-]
@@ -98,17 +97,17 @@ E2=1.33 # [-]
 E3=0.25 # [-]
 Sq=0.2  # [-]
 
+
 beta = (dt/dz**2)
 top = N-1
 
-t1 = time.time() 
+
 
 # Create a vector of time steps 
 t = np.zeros((M))
 t[1:M] = dt * (np.arange(1,M) - 1)
 
-# SW ADDITION : PHYTOPLANKTON! 
-algae = diatoms.c
+
 
 #***************************************************************************
 #   Define supporting functions
@@ -190,8 +189,8 @@ Gh = np.clip(Gh, -0.28, 0.0233)
 # Calculate Sm, Sh, nu_t, Kq, Kz
 Sm = calculate_sm(Gh) 
 Sh = calculate_sh(Gh) 
-nu_t = (Sm * Q * L) + nu # Turbulent diffusivity for Q2
-Kq = (Sq * Q * L) + nu # Turbulent viscosity
+nu_t = (Sm * Q * L) + nu    # Turbulent diffusivity for Q2
+Kq = (Sq * Q * L) + nu      # Turbulent viscosity
 Kz = (Sh * Q * L) + nu
 
 # Intialize an object for saving profiles throughout the model run
@@ -273,7 +272,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
-    aU[1:top] = -0.5*beta*(nu_tp[1:top] + nu_tp[0:top-1])
+    aU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[0:top-1])
     bU[1:top] = 1 + 0.5*beta*(nu_tp[2:top+1] + 2*nu_tp[1:top] + nu_tp[0:top-1])
     cU[1:top] = -0.5*beta*(nu_tp[1:top] + nu_tp[2:top+1])
     dU[1:top] = Up[1:top] - dt*Px[1:top]
@@ -412,7 +411,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     L = Q2L/(Q2 + SMALL)
 
     # Check length scale 
-    ind = (L**2)*(N_BV**2) > (0.281*Q2) # Vectorized if-statement 
+    ind = ((L**2)*(N_BV**2)) > (0.281*Q2) # Vectorized if-statement 
     if sum(ind) > 0: 
         Q2L[ind] = Q2[ind]*math.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
         L[ind] = Q2L[ind] / Q2[ind]
@@ -422,7 +421,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    print(sum(algae))
+    
 
     return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae
 
@@ -439,14 +438,26 @@ for m in range(1,M):
     U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae) 
 
     if m%isave == 0:
+        diatoms.save_total_mass()
         saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
+
+
 
 print(time.time()  - t1) 
 
 
-# saved_profiles.plot_profiles('U', skip=2)
-a1 = saved_profiles.plot_profiles('algae', skip=2)
-# saved_profiles.plot_profiles('C', skip=2)
-# saved_profiles.plot_profiles('nu_t', skip=2)
-# saved_profiles.plot_profiles('L', skip=2)
-# saved_profiles.plot_profiles('Kz', skip=2)
+f0, a0 = saved_profiles.plot_profiles('U', skip=2)
+f0.savefig('U.png')
+
+f0, a0 = saved_profiles.plot_profiles('algae', skip=2)
+f0.savefig('algae.png')
+
+
+# # saved_profiles.plot_profiles('C', skip=2)
+# # saved_profiles.plot_profiles('nu_t', skip=2)
+# # saved_profiles.plot_profiles('L', skip=2)
+f0, a0 = saved_profiles.plot_profiles('Kz', skip=2)
+f0.savefig('kappa_z.png')
+
+plt.plot(saved_profiles.saved_profiles['time'][:-1], diatoms.total_mass)
+plt.show()
