@@ -86,7 +86,7 @@ class SavedProfiles:
         self.saved_profiles['algae'][:,profile_num] = algae
         self.saved_profiles['time'][profile_num] = time
 
-    def plot_profiles(self, variable, skip=1):
+    def plot_profiles(self, variable, skip=1, passed_string=''):
 
         def seconds2hours(seconds):
             return seconds/3600
@@ -123,7 +123,7 @@ class SavedProfiles:
         ax.set_ylabel('Depth (m)')
         ax.set_xlabel('%s (%s)' % (variable2name[variable], variable2units[variable]))
         # ax.hlines(0, color = 'k', linestyle = '--')
-        ax.set_title(variable2name[variable])
+        ax.set_title(variable2name[variable] + passed_string)
         plt.tight_layout()
         plt.show()
         return fig, ax  

@@ -23,15 +23,17 @@ class Algae_Species:
     z     : depth of water column layer [m]
     '''
 
-    def __init__(self, k=0, pmax = 0, ws=0, Hi = 0, Li = 0, name = None):
+    def __init__(self, k=0, pmax = 0, ws=0, Hi = 0, Li = 0, name = None, self_shading=False, net=False):
         ''' Initialize species with provided values'''
-        self.k = 0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
+        self.k = 0#  0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
         self.pmax = self.hour2second(pmax)      # 1/hour to 1/second 
-        self.ws =   self.hour2second(ws)/100    # 100 cm/m ; 3600 seconds/hour 
+        self.ws =   ws #self.hour2second(ws)/100    # 100 cm/m ; 3600 seconds/hour 
         self.Hi = Hi
         self.Li = self.hour2second(Li)
         self.name = name
         self.total_mass = [] 
+        self.self_shading=self_shading
+        self.net=net
 
     def set_vertical_grid(self, H, N, dz):
         self.N = N
@@ -39,10 +41,16 @@ class Algae_Species:
         z = [(-H + dz*(i + 0.5)) for i in range(N)]
         self.z = np.array(z)
 
-    def set_initial_concentration(self, N, init):
-        ''' Set initial concentration of species'''
+    def set_initial_concentration(self, N, init, opt='constant'):
+        ''' Set initial concentration of species
+            opt can be set to linear if you'd like to initialize 
+            the algae with some sort of gradient. It's pretty 
+            hacky as an option right now. '''
         self.c = np.zeros(N) + init 
-        self.c = np.linspace(0,init,N)
+        if opt == 'linear':
+            self.c = np.linspace(0,init,N)
+        else: 
+            print("Setting constant concentration for %s @ %d" % (self.name, init))
 
     def hour2second(self, input_rate):
         ''' Convert per-hour rate to per-second rate'''
@@ -68,19 +76,20 @@ class Algae_Species:
     
     def get_loss_and_growth(self, I_in, current_concentration):
         ''' Get loss and growth rates for a given time step'''
-
-        self.c = current_concentration
-        I, photic_depth = self.get_light_intensity(I_in)
-        growth = self.monod_growth_rate(I) 
-        loss   = self.Li
-        net = growth - loss
+        if self.net:
+            self.c = current_concentration
+            I, photic_depth = self.get_light_intensity(I_in)
+            growth = self.monod_growth_rate(I) 
+            loss = self.Li
+            net  = growth - loss
+        else:
+            net = np.zeros(self.N,)
         return net 
     
     def save_total_mass(self):
         ''' Save total mass of species at each time step'''
         self.total_mass.append(np.sum(self.c)) 
 
-    
 
 # Lives outside the class since we need to calculate light intensity for all species 
     

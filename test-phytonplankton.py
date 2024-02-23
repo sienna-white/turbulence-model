@@ -5,7 +5,32 @@ import matplotlib as mpl
 import watercolumn_lib as lib
 
 from phytoplankton import Algae_Species
+'''
+get stockton shipping channel depth --> use that for H 
+using the outputs of U as a guide --> 5-10 cm/s is the right range for the driving pressure gradient
 
+eg 10m depth, 10 cm/s 
+
+ideally we run to some steady-state -- but system also maybe won't reach steady state
+
+
+what kind of output?
+ -- if the scalar evolves from its initial condition (growing; dying; )
+ -- if 
+
+base case : no swimming; no thermal ; no wind ; no self-shading 
+step1 --> tune pressure gradient (velocity won't affect kx)
+step2 --> swimming speed (general range; etc)
+step3 --> depth-integrated biomass probably good output 
+
+eventually wind and thermal at the top 
+before sunday evening 
+
+c_n+1 = 0 for zero flux through the top
+
+for w>0 --> you want the biomass to be held in the top layer.... at the very surface
+
+'''
 # Spatial Parameters 
 N = 100    # number of grid points
 H = 20    # depth (meters)
@@ -17,7 +42,7 @@ background_turbidity =  0.16
 I_in = 350 
 
 # Algae parameters 
-diatoms = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                    pmax = 0.05,     # maximum specific growth rate [1/hour]
                    ws = 0,          # vertical velocity [cm/hour]
                    Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]

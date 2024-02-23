@@ -1,0 +1,22 @@
+
+# Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
+isave = 30
+figname = '_ws-0_'
+
+
+# Algae parameters 
+background_turbidity =  0.16
+I_in = 350 
+
+diatoms = Algae_Species(k = 0,  pmax = 0.05, ws = 0, Hi = 40,  Li = 0.006,   name = "Diatoms")
+
+diatoms.set_initial_concentration(N, init=100, opt='constant')
+diatoms.set_vertical_grid(H, N, dz)
+algae = diatoms.c
+courant = abs(diatoms.ws * dt)/dz
+assert(courant < 1)
+
+
+# Pressure Forcing -> Need to modify to allow for time variable Px.
+Px0 = 0.0001/100  # Magnitude on pressure gradient forcing
+T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
