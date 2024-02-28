@@ -44,7 +44,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 60   # (seconds) size of time step 
-M  = 2 #1440*3 # 400  # number of time steps 
+M  = 20 #1440*3 # 400  # number of time steps 
 
 read_from_input=False
 
@@ -56,7 +56,7 @@ if read_from_input:
             exec(line)
 else: 
     # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-    isave = 30
+    isave = 1
 
     # Algae parameters 
     background_turbidity =  0.16
@@ -64,7 +64,7 @@ else:
 
     diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                     pmax = 0.05,     # maximum specific growth rate [1/hour]
-                    ws = 0,#-1e-3, #-200,       # vertical velocity [m/s]
+                    ws = 1e-5,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
                     name = "Diatoms",
@@ -332,13 +332,13 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     # If settling speed is DOWNWARD (sinking!)
     if ws<=0:
         aA[1:top]  = -beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-        bA[1:top]  = 1 - wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA[1:top]  = wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
         dA = Ap
 
         # Bottom-Boundary: no flux for scalars
-        bA[0] =  1 - (gamma[0]*dt) - wsdtdz + beta/2*(Kzp[1] + Kzp[0])  # + ws*dtdz 
-        cA[0] =  wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
+        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) #- (gamma[0]*dt) - wsdtdz + beta/2*(Kzp[1] + Kzp[0])  # + ws*dtdz 
+        cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
         dA[0] =  Ap[0]
 
         # Top-Boundary: no flux for scalars
@@ -477,7 +477,7 @@ for m in range(1,M):
     diatoms.save_total_mass()
     if m%isave == 0:
         diatoms.save_total_mass()
-        # saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
+        saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
 
 
 
@@ -486,7 +486,7 @@ print(time.time()  - t1)
 # f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/U-%s.png' % RUN_INFO)
 
-# f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
+f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/algae-%s.png' % RUN_INFO)
 
 
