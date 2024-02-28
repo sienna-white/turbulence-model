@@ -64,7 +64,7 @@ else:
 
     diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                     pmax = 0.05,     # maximum specific growth rate [1/hour]
-                    ws = 1e-3, #-200,       # vertical velocity [m/s]
+                    ws = 0,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
                     name = "Diatoms",
@@ -82,6 +82,7 @@ diatoms.set_initial_concentration(N, init=init, opt='linear')
 diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 algae = diatoms.c
+print("line 85; total mass = %f" % sum(algae))
 courant = abs(diatoms.ws * dt)/dz
 
 RUN_INFO=' Ws=%2.2e m.p.s' % diatoms.ws
@@ -278,6 +279,8 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     Lp, Kzp, Kqp, nu_tp = L, Kz, Kq, nu_t
     N_BVp = N_BV
     Up, Vp = U, V
+    
+    print("line 283; total mass = %f" % sum(algae))
 
     #***************************************************************************
     #   Advance velocity (U,V)
@@ -346,8 +349,11 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
 
     # Thomas algorithm to solve for C
     algae = lib.TDMA(aA, bA, cA, dA, N)
+    print("line 352; total mass = %f" % sum(algae))
     algae[top] = algae[top]  #+ ws*algae[top]*dt/dz   # ADD BACK IN ADVECTIVE FLUX 
+
     algae[algae < 0] = SMALL  
+    print("line 356; total mass = %f" % sum(algae))
     
 
     #***************************************************************************
