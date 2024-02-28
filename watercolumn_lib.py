@@ -65,12 +65,13 @@ class SavedProfiles:
     def initialize_saved_profiles(self):
         saved_profiles = {} 
         for variable in self.variables_to_save:
-            saved_profiles[variable] = np.zeros((self.N, self.n_profiles))
-        saved_profiles['time'] = np.zeros((self.n_profiles))
+            saved_profiles[variable] = np.zeros((self.N, self.n_profiles+1))
+        saved_profiles['time'] = np.zeros((self.n_profiles+1))
         self.saved_profiles = saved_profiles
 
     def store_z(self, z):
         self.z = z
+
     def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
         profile_num = profile_num//self.isave
         self.saved_profiles['U'][:,profile_num] = U

@@ -43,8 +43,8 @@ than passing a bunch of arrays around between functions.
 N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
-dt = 1   # (seconds) size of time step 
-M  = 180 #1440*3 # 400  # number of time steps 
+dt = 60   # (seconds) size of time step 
+M  = 2 #1440*3 # 400  # number of time steps 
 
 read_from_input=False
 
@@ -56,7 +56,7 @@ if read_from_input:
             exec(line)
 else: 
     # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-    isave = 2
+    isave = 30
 
     # Algae parameters 
     background_turbidity =  0.16
@@ -64,7 +64,7 @@ else:
 
     diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                     pmax = 0.05,     # maximum specific growth rate [1/hour]
-                    ws = .01, #-200,       # vertical velocity [m/s]
+                    ws = 1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
                     name = "Diatoms",
@@ -73,12 +73,13 @@ else:
     init = 100 
 
     # Pressure Forcing -> Need to modify to allow for time variable Px.
-    Px0 = 2e-9  # Magnitude on pressure gradient forcing
+    Px0 = 2e-6  # Magnitude on pressure gradient forcing
     T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 print("WS IS %2.9f m/s" % (diatoms.ws))
 
 diatoms.set_initial_concentration(N, init=init, opt='linear')
+diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 algae = diatoms.c
 courant = abs(diatoms.ws * dt)/dz
@@ -467,9 +468,10 @@ for m in range(1,M):
     # Uses BGO/Mellor-Yamada 2-equation closure
     U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae) 
 
+    diatoms.save_total_mass()
     if m%isave == 0:
         diatoms.save_total_mass()
-        saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
+        # saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
 
 
 
@@ -478,8 +480,8 @@ print(time.time()  - t1)
 # f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/U-%s.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
-f0.savefig('output/algae-%s.png' % RUN_INFO)
+# f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
+# f0.savefig('output/algae-%s.png' % RUN_INFO)
 
 
 # # saved_profiles.plot_profiles('C', skip=2)
@@ -487,6 +489,6 @@ f0.savefig('output/algae-%s.png' % RUN_INFO)
 # # saved_profiles.plot_profiles('L', skip=2)
 # f0, a0 = saved_profiles.plot_profiles('Kz', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/kappa_z-%s.png' % RUN_INFO)
-
-# plt.plot(saved_profiles.saved_profiles['time'][:-1], diatoms.total_mass)
-# plt.show()
+print(diatoms.total_mass)
+plt.plot( diatoms.total_mass)
+plt.show()
