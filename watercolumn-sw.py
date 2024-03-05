@@ -23,6 +23,7 @@ import matplotlib as mpl
 import watercolumn_lib as lib
 from phytoplankton import Algae_Species
 import time
+
 t1 = time.time()  # Time our simluation 
 
 
@@ -43,8 +44,8 @@ than passing a bunch of arrays around between functions.
 N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
-dt = 60   # (seconds) size of time step 
-M  = 20 #1440*3 # 400  # number of time steps 
+dt = 10 #60   # (seconds) size of time step 
+M  = 1440*3 # 400  # number of time steps 
 
 read_from_input=False
 
@@ -56,15 +57,16 @@ if read_from_input:
             exec(line)
 else: 
     # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-    isave = 1
+    isave = 30
 
     # Algae parameters 
     background_turbidity =  0.16
     I_in = 350 
 
+    # Show --> ws=1e-7
     diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                     pmax = 0.05,     # maximum specific growth rate [1/hour]
-                    ws = 1e-5,#-1e-3, #-200,       # vertical velocity [m/s]
+                    ws = 1e-5, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
                     name = "Diatoms",
@@ -73,7 +75,7 @@ else:
     init = 100 
 
     # Pressure Forcing -> Need to modify to allow for time variable Px.
-    Px0 = 2e-6  # Magnitude on pressure gradient forcing
+    Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
     T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 print("WS IS %2.9f m/s" % (diatoms.ws))
@@ -83,8 +85,8 @@ diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 algae = diatoms.c
 print("line 85; total mass = %f" % sum(algae))
-courant = abs(diatoms.ws * dt)/dz
-
+courant = abs(diatoms.ws * dt)
+assert(courant<dz)
 RUN_INFO=' Ws=%2.2e m.p.s' % diatoms.ws
 
 # Initial conditions for temperature profile
@@ -210,16 +212,17 @@ Kz = (Sh * Q * L) + nu
 
 # Intialize an object for saving profiles throughout the model run
 n_profiles = int(M/isave)
-variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV','algae']
+variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV','algae', 'biomass']
 saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
 
 # Save initial condition (first profile at time zero)
-saved_profiles.save_profile_at_timestep(0, 0, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
+saved_profiles.save_profile_at_timestep(0, 0, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, sum(algae))
 
 # Store z in our object so we can plot the profiles later 
 saved_profiles.store_z(z)
 
 def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
+
     '''
     Time-advancing algorithm. Steps a single timestep for c, rho, q2, q2l, l, kz, nu_t, kq
     All diffusion/viscous terms handled implicitly
@@ -280,8 +283,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     N_BVp = N_BV
     Up, Vp = U, V
     
-    print("line 283; total mass = %f" % sum(algae))
-
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
@@ -307,54 +308,51 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     #   Advance algae! // need to figure out to include settling velocity / source + sink
     #***************************************************************************
     ws    = diatoms.ws 
-    wsdtdz  = (ws*dt)/dz
+    wsdtdz  = abs(ws*dt)/dz
+
     gamma = diatoms.get_loss_and_growth(I_in = 350, current_concentration = Ap)
-    gamma = gamma * 0 
+    # print(gamma)
 
-
+    
     # If settling speed is UPWARD (swimming!)
     if ws>0:
-        aA[1:top]  = -beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
+        aA[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
         bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        cA[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
         dA = Ap
 
         # Bottom-Boundary: no flux for scalars
-        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0])  # + ws*dtdz 
+        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
         cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
         dA[0] =  Ap[0]
 
         # Top-Boundary: no flux for scalars
         aA[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-        bA[top] = 1 + wsdtdz  + beta/2 * (Kzp[top] + Kzp[top-1]) - gamma[top]*dt
+        bA[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) # removed + wsdtdz 
         dA[top] = Ap[top]
 
     # If settling speed is DOWNWARD (sinking!)
     if ws<=0:
-        aA[1:top]  = -beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
+        aA[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
         bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
         cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
         dA = Ap
 
         # Bottom-Boundary: no flux for scalars
-        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) #- (gamma[0]*dt) - wsdtdz + beta/2*(Kzp[1] + Kzp[0])  # + ws*dtdz 
+        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
         cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
         dA[0] =  Ap[0]
 
         # Top-Boundary: no flux for scalars
         aA[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
-        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) 
+        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz # okay adding this here 
         dA[top] = Ap[top]
 
-
     # Thomas algorithm to solve for C
-    algae = lib.TDMA(aA, bA, cA, dA, N)
-    print("line 352; total mass = %f" % sum(algae))
-    algae[top] = algae[top]  #+ ws*algae[top]*dt/dz   # ADD BACK IN ADVECTIVE FLUX 
+    algae = lib.TDMA(aA, bA, cA, dA, N)  
 
-    algae[algae < 0] = SMALL  
-    print("line 356; total mass = %f" % sum(algae))
-    
+    # if ws>0:
+    #     algae[top] = algae[top] + Ap[top]*wsdtdz
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
@@ -472,29 +470,35 @@ for m in range(1,M):
         print('Time step = %d' % m)
 
     # Uses BGO/Mellor-Yamada 2-equation closure
+    # print("START OF LOOP-- ALGAE MASS IS %2.2f" % sum(algae))
+
     U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae) 
 
     diatoms.save_total_mass()
     if m%isave == 0:
         diatoms.save_total_mass()
-        saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae)
-
-
+        saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, sum(algae))
 
 print(time.time()  - t1) 
 
+#***************************************************************************
+saved_profiles.plot_profiles('Kz', skip=2)
 # f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/U-%s.png' % RUN_INFO)
 
+f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO)
+a0.set_ylim(4000-2,4000+2)
+f0.savefig('output/biomass-%s_px2e-6.png' % RUN_INFO)
+
 f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
-# f0.savefig('output/algae-%s.png' % RUN_INFO)
+f0.savefig('output/algae-%s_px2e-6.png' % RUN_INFO)
 
 
 # # saved_profiles.plot_profiles('C', skip=2)
-# # saved_profiles.plot_profiles('nu_t', skip=2)
+
 # # saved_profiles.plot_profiles('L', skip=2)
 # f0, a0 = saved_profiles.plot_profiles('Kz', skip=2, passed_string=RUN_INFO)
 # f0.savefig('output/kappa_z-%s.png' % RUN_INFO)
-print(diatoms.total_mass)
-plt.plot( diatoms.total_mass)
-plt.show()
+# print(diatoms.total_mass)
+# plt.plot( diatoms.total_mass)
+# plt.show()

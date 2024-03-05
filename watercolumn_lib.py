@@ -17,7 +17,9 @@ variable2name['nu_t'] = r'turbulent viscosity ($\nu_t$)'
 variable2name['Kz'] = r'turbulent diffusivity ($\kappa_z$)'
 variable2name['Kq'] = r'turbulent diffusivity ($\kappa_q$)'
 variable2name['N_BV'] = r'Brunt-Vaisala frequency ($N_{BV}$)'
-variable2name['algae'] = r'Algae Concentration'
+variable2name['algae'] = r'Algae concentration'
+variable2name['biomass'] = r'Total algae biomass'
+
 
 variable2units = {}
 variable2units['U'] = 'm/s'
@@ -31,6 +33,7 @@ variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV'] = r'1/s'
 variable2units['algae'] = r'10$^6$ cells/m$^2$'
+variable2units['biomass'] = r'10$^6$ cells'
 
 
 def initialize_abcd(N):
@@ -52,7 +55,6 @@ def TDMA(aX, bX, cX, dX, N):
         x[i] = (1/bX[i])*(dX[i] - cX[i]*x[i+1])
     return x
 
-
 class SavedProfiles:
     def __init__(self,n_profiles, variables_to_save, N, isave):
         self.n_profiles = n_profiles
@@ -72,7 +74,7 @@ class SavedProfiles:
     def store_z(self, z):
         self.z = z
 
-    def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
+    def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, biomass):
         profile_num = profile_num//self.isave
         self.saved_profiles['U'][:,profile_num] = U
         self.saved_profiles['C'][:,profile_num] = C
@@ -86,7 +88,27 @@ class SavedProfiles:
         self.saved_profiles['N_BV'][:,profile_num] = N_BV
         self.saved_profiles['algae'][:,profile_num] = algae
         self.saved_profiles['time'][profile_num] = time
+        self.saved_profiles['biomass'][:,profile_num] = biomass
 
+    def plot_biomass(self, passed_string=''):
+
+        def seconds2hours(seconds):
+            return seconds/3600
+        
+        fig, ax = plt.figure(figsize=(8,4)), plt.gca()
+        biomass = [self.saved_profiles['biomass'][0,i] for i in range(self.n_profiles)]
+        
+        ax.plot(self.saved_profiles['time'][0:len(biomass)], biomass,
+                '-o', color = 'k', markersize = 5)
+
+        ax.grid(alpha = 0.5)
+        ax.set_ylabel('Algal biomass (%s)' % variable2units["biomass"])
+        ax.set_xlabel('Time (s)')
+        ax.set_title(variable2name["biomass"] + passed_string)
+        plt.tight_layout()
+        plt.show()
+        return fig, ax  
+    
     def plot_profiles(self, variable, skip=1, passed_string=''):
 
         def seconds2hours(seconds):
@@ -98,6 +120,9 @@ class SavedProfiles:
             legend_ind = np.floor(len(plots)/6)
         else:
             legend_ind = 1
+
+        ls = '-'
+
         for i, ind in enumerate(plots):
             if self.saved_profiles['time'][ind] == 0:
                  ax.plot(self.saved_profiles[variable][:,ind], 
@@ -108,14 +133,14 @@ class SavedProfiles:
             else:
                 if i%legend_ind==0: 
                     ax.plot(self.saved_profiles[variable][:,ind], 
-                            self.z, '-',
+                            self.z, ls,
                             color = mpl.cm.viridis(i/len(plots)),
                             linewidth = 2.5, 
                             alpha = 0.6,
                             label='t = %d hr' % seconds2hours(self.saved_profiles['time'][ind]))
                 else:
                     ax.plot(self.saved_profiles[variable][:,ind], 
-                            self.z, '-',
+                            self.z, ls,
                             color = mpl.cm.viridis(i/len(plots)),
                             linewidth = 2.5, 
                             alpha = 0.6)

@@ -67,7 +67,6 @@ class Algae_Species:
         '''
         pi = self.pmax * I/(self.Hi + I)
         return pi 
-
     
     def get_light_intensity(self, I_in):
         background_turbidity =  0.26
@@ -75,7 +74,8 @@ class Algae_Species:
         return I, photic_depth
     
     def get_loss_and_growth(self, I_in, current_concentration):
-        ''' Get loss and growth rates for a given time step'''
+        ''' Get loss and growth rates for a give
+        n time step'''
         if self.net:
             self.c = current_concentration
             I, photic_depth = self.get_light_intensity(I_in)
