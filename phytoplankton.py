@@ -10,6 +10,12 @@ import matplotlib.pyplot as plt
 # z = [(-H + dz*(i + 0.5)) for i in range(N)]
 # z = np.array(z)
 
+'''
+Huisman paper
+
+Diatoms ws = -1.38e-5 m/s
+Cyanobacteria = 1.38e-4 m/s
+'''
 
 class Algae_Species:
     '''
@@ -25,13 +31,14 @@ class Algae_Species:
 
     def __init__(self, k=0, pmax = 0, ws=0, Hi = 0, Li = 0, name = None, self_shading=False, net=False):
         ''' Initialize species with provided values'''
-        self.k = 0#  0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
+        self.k = k #  0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
         self.pmax = self.hour2second(pmax)      # 1/hour to 1/second 
         self.ws =   ws #self.hour2second(ws)/100    # 100 cm/m ; 3600 seconds/hour 
         self.Hi = Hi
         self.Li = self.hour2second(Li)
         self.name = name
         self.total_mass = [] 
+        self.net_growth = []
         self.self_shading=self_shading
         self.net=net
 
@@ -70,11 +77,14 @@ class Algae_Species:
     
     def get_light_intensity(self, I_in):
         background_turbidity =  0.26
-        I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity)
-        return I, photic_depth
+        if self.self_shading:
+            I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity, self_shading=True)
+        else:
+            I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity, self_shading=False)
+        return I, photic_depth # photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity)
     
     def get_loss_and_growth(self, I_in, current_concentration):
-        ''' Get loss and growth rates for a give
+        ''' Get loss and growth rates for a given
         n time step'''
         if self.net:
             self.c = current_concentration
@@ -90,30 +100,37 @@ class Algae_Species:
         ''' Save total mass of species at each time step'''
         self.total_mass.append(np.sum(self.c)) 
 
+    def save_net_growth(self, net):
+        ''' Save net growth of species at each time step'''
+        self.net_growth.append(net*self.c)
+
 
 # Lives outside the class since we need to calculate light intensity for all species 
     
-def self_shading(ListofAlgae, I_in, turbidity):
+def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
     ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
     z  = ListofAlgae[0].z
     dz = ListofAlgae[0].dz
     N = ListofAlgae[0].N
-    corrected_z = (-1) * z # We want water depth [cm] to be zero at the top, 20 at the bottom (pos. numbers)
+    # We want water depth [cm] to be zero at the top, 20 at the bottom (pos. numbers)
+    corrected_z = (-1) * z 
     kxC = np.zeros(N)
-    for species in ListofAlgae:
-        kxC += species.k * species.c
+    if self_shading:
+        for species in ListofAlgae:
+            kxC += species.k * species.c
 
     I = np.zeros(N)
-    vector = kxC - (turbidity*corrected_z)
+    vector = kxC + (turbidity*corrected_z) # This makes sense to be plus to me 
     for i in (range(N)):
         I[i] = np.sum(vector[i:-1]) * z[i]
 
-    I[I<0] = 1e-10
-    I = I_in * np.exp(-I)   
-    try: 
-        photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
-    except:
-        photic_depth = 0
+    I0 = I_in * np.exp(I)
+    return I0, 0 #photic_depth    
+    # try: 
+    #     photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
+    # except:
+    #     photic_depth = 0
+
     # print("Photic depth is %2.2f meters" % photic_depth)
 
     # fig = plt.figure()
@@ -126,7 +143,7 @@ def self_shading(ListofAlgae, I_in, turbidity):
     # ax.grid(alpha = 0.5)
     # plt.show()
 
-    return I, photic_depth 
+    
 
 
   

@@ -115,179 +115,236 @@ Again, $\nu_t$ is a function $\nu_t(z,t)$ that dissipates energy from the mean v
 
 \section{Discretization}
 
+
+
+
 \subsection{Advection-Diffusion Equation for Algae}
-
-
-
 Our governing equation for algae is given by,
+
 \begin{equation} \label{eq:1}
 \frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \Gamma C 
 \end{equation}
 
-where $C$ is the concentration of algae (scalar), $\Gamma$ is some source/loss term, and $w_s$ is the sinking or swimming speed of the algae: $w_s$  can be positive (\textit{Microcystis}) or negative (phytoplankton). 
+where $C$ is the concentration of algae (scalar), $\Gamma$ is the source/loss term, and $w_s$ is the sinking or swimming speed of the algae: $w_s$  can be positive (\textit{Microcystis}) or negative (phytoplankton). 
 
 We break down the discretization of Equation \ref{eq:1} by the left hand (time derivative + advection) and right hand (diffusion) sides. The right-hand side is trickiest. 
 
 
-
-
 \subsubsection{Discretizing diffusion}
-We first evaluate the diffusion term in space (neglecting $\Gamma$ for now). Note here that diffusion is given by $\kappa_t$, which respresents turbulent diffusion (a quantity we will solve for in the turbulence closure). Because the subscripts get messy, I'll drop the subscript $t$, but all diffusion in this equation refers to $\kappa_t$. 
+We first evaluate the diffusion term in space (neglecting $\Gamma$ for now) using a staggered with with central differencing. Note here that diffusion is given by $\kappa_t$, which respresents turbulent diffusion (a quantity we will solve for in the turbulence closure). Because the subscripts get messy, I'll drop the subscript $t$, but all diffusion in this equation refers to $\kappa_t$. 
 
-We evaluate $\kappa_t \frac{\partial C}{\partial z}$ at $i+1/2$, $i- 1/2$,
+For compactness, we evaluate $\kappa_t \frac{\partial C}{\partial z}$ at $i+ \frac{1}{2}$, $i- \frac{1}{2}$. See the below diagram for a visual representation of this stencil.
+
+![Staggered stencil for $\kappa_t$ & C](/Users/siennawhite/research/turbulence-model/diagrams/1x/stencil.png){height=200}
+
+We rewrite our expression as,
 $$ 
- \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) \rightarrow \frac{1}{\Delta z} \left( \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i - 1/2} \right)
+ \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right)  \approx \frac{1}{\Delta z} \left( \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i - 1/2} \right)
 $$ 
-but evaluate C at $i+1$, $i-1$ (this is where I will now drop the subscript on $\kappa_t$),
+evaluating C at $i+1$, $i-1$ (this is where I will now drop the subscript on $\kappa_t$),
 $$ 
 =  \frac{1}{\Delta z} \left( \kappa_{i + 1/2} \frac{\partial C}{\partial z}_{i + 1}  - \kappa_{i - 1/2} \frac{\partial C}{\partial z}_{i - 1} \right).
 $$
 
 
-![Stencil for $\kappa_t$ & C](/Users/siennawhite/research/turbulence-model/diagrams/1x/stencil.png){height=200}
 
-We represent these $1/2$ stencil points for $\kappa_t$ as the average of the two neighboring cells,
+Note that evenutally we will represent these $\frac{1}{2}$ stencil points for $\kappa_t$ as the average of the two neighboring cells,
  $$ \kappa_{ i + 1/2}  \approx  \frac{ \kappa_{i + 1} +  \kappa_{i} }{2} $$
  $$ \kappa_{ i - 1/2}  \approx  \frac{ \kappa_{i - 1} +  \kappa_{i} }{2} $$
+For now though, just to minimize the amount of terms we juggle in the algebra, I'll leave these written as $\kappa_{ i -/+ 1/2}$. 
 
-And discretize the graident of $C$, 
+Now we discretize the graident of $C$, 
 $$ \left(\frac{\partial C}{\partial z}\right)_{i + 1} \approx \frac{ C_{i+1} - C_{i}}{\Delta z} $$ 
 
 $$ \left(\frac{\partial C}{\partial z}\right)_{i - 1} \approx \frac{ C_{i} - C_{i-1}}{\Delta z} $$ 
 Putting these together, 
 $$ 
-\frac{1}{\Delta z} \left( \left(\kappa \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa \frac{\partial C}{\partial z}\right)_{i - 1/2} \right) \rightarrow  \frac{1}{\Delta z} \left(\frac{ \kappa_{i+1} +  \kappa_{i} }{2} \frac{ C_{i+1} - C_{i}}{\Delta z} -   \frac{\kappa_{t (i - 1)} +  \kappa_{i}}{2} \frac{ C_{i} - C_{i-1}}{\Delta z} \right) $$ 
-
-$$ 
-= \frac{1}{2 \Delta z^2} \left(  (\kappa_{i +1} +  \kappa_{i})( C_{i+1} - C_{i}) -   (\kappa_{i - 1} +  \kappa_{i})( C_{i} - C_{i-1}) \right) $$ 
+ \frac{1}{\Delta z} \left( \kappa_{ i + 1/2} \frac{ C_{i+1} - C_{i}}{\Delta z} -   \kappa_{ i - 1/2} \frac{ C_{i} - C_{i-1}}{\Delta z} \right) $$ 
 Factor according to $C$,
 
-\begin{equation} \begin{split}  \label{eq:laplacian}
-= C_{i+1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i +1} +  \kappa_{i} \right)  \right) \\  + 
- C_{i} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i +1} - 2\kappa_{i} - \kappa_{i-1} \right)  \right) \\
-+ C_{i-1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i -1} +  \kappa_{i} \right)  \right)  \end{split} \end{equation}
+\begin{equation} \label{eq:laplacian}
+= C_{i+1} \frac{1}{\Delta z^2} \left( \kappa_{ i + 1/2} \right)   + 
+ C_{i} \frac{1}{\Delta z^2} \left(-\kappa_{ i + 1/2} - \kappa_{ i - 1/2}  \right) 
++ C_{i-1} \frac{1}{\Delta z^2} \left( \kappa_{ i - 1/2}  \right)   \end{equation}
+Note that this expression (Eq \ref{eq:laplacian}) for diffusion will not change depending on the sign of $w_s$.
 
-
-
-
-\section{Discretizing in time}
-
-Next we discretize  
-$$ 
-\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \Gamma C
-$$ 
-in time. 
-
-We use an implicit scheme with upwinding. Note that the nature of upwinding with the ``algae advection" term changes depending on the sign of $w_s$. This gets confusing very easily (see diagram). 
+\subsection{Discretizing advection}
+Discretizing is advection is trickier as we employ upwinding that depends on the direction of swimming speed (eg, sinking particles ($w_s<0$) vs. floating particles ($w_s>0$)). Note that the nature of upwinding with the ``algae advection" term changes depending on the sign of $w_s$. This gets confusing very easily (see diagram). 
 
 ![Upwinding discretization for plankton advection depends on the direction of $w_s$ (sinking or swimming)](diagrams/4x/upwind.png)
 
-If $w_s > 0$, such as in the case of Microcystis, where the algae are very-barely-buoyant, 
+<!-- ******************************************************************** -->
+\section{Discretizing in time}
+
+Next we discretize our in time. In order to prevent confusion, let me note that $w_s$ is a positive quantity no matter the direction of the particle. If the particle sinks, we write this equation as, 
+\begin{equation} \label{eq:sink}
+\frac{\partial C}{\partial t} - w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \Gamma C
+\end{equation}
+
+and if the algae floats, we write the equation as 
+
+\begin{equation} \label{eq:float}
+\frac{\partial C}{\partial t} + w_s \frac{\partial C}{\partial z}= \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right) + \Gamma C
+\end{equation}
+
+Thus, in our code, we must note the direction of $w_s$ in addition to its magnitude.
+
+For discretization, we use an implicit scheme with upwinding. 
+
+If $w_s > 0$ (Eq. \ref{eq:float}) such as in the case of Microcystis, where the algae are very-barely-buoyant, 
 $$ \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_i^{n+1}  $$ 
 
-however, in the case of standard diatoms ($w_s<0$), which sink naturally,
-$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_{i+1}^{n+1} - C_{i}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_i^{n+1}  $$ 
+
+In the case of standard diatoms which sink naturally ($w_s<0$), Eq. \ref{eq:sink}, we have
+$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} - w_s \frac{C_{i+1}^{n+1} - C_{i}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_i^{n+1}. $$ 
 We will solve these individually and discuss our approach for boundary conditions. 
 
+\noindent\rule{\textwidth}{1pt}
+<!-- ******************************************************************** -->
 
 \subsection{Discretized equation when $w_s<0$}
-$$\begin{split} \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_{i+1}^{n+1} - C_{i}^{n+1}}{\Delta z} = C_{i+1}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i +1}^{n} +  \kappa_{i} \right)  \right) \\  + 
- C_{i}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-+ C_{i-1}^{n+1} \left( \frac{1}{2 \Delta z^2}  \left(\kappa_{i -1}^{n} +  \kappa_{i}^{n} \right)  \right) \\ + \Gamma C_i^{n+1}  \end{split} $$
 
-Designate $\beta = \frac{\Delta t}{2 \Delta z^2}$, 
+$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} - w_s \frac{C_{i+1}^{n+1} - C_{i}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_i^{n+1}  $$
+Plug in our expression for diffusion,
+$$\begin{split} \frac{C_i^{n+1} - C_i^n}{\Delta t} - w_s \frac{C_{i+1}^{n+1} - C_{i}^{n+1}}{\Delta z} =  \Gamma C_i^{n+1} \\ + C_{i+1} \frac{1}{\Delta z^2} \left( \kappa_{ i + 1/2} \right)   + 
+ C_{i} \frac{1}{\Delta z^2} \left(-\kappa_{ i + 1/2} - \kappa_{ i - 1/2}  \right) 
++ C_{i-1} \frac{1}{\Delta z^2} \left( \kappa_{ i - 1/2}  \right)  \end{split} $$
 
-$$\begin{split}C_i^{n+1} - C_i^n + \frac{\Delta t w_s}{\Delta z}(C_{i+1}^{n+1} - C_{i}^{n+1}) = \\  C_{i+1}^{n+1} \left( \beta  \left(\kappa_{i +1}^{n} +  \kappa_{i} \right)  \right) \\  + 
- C_{i}^{n+1} \left( \Delta t \Gamma + \beta  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-+ C_{i-1}^{n+1} \left( \beta  \left(\kappa_{i -1}^{n} + \kappa_{i}^{n} \right)  \right)  \end{split} $$
 
-Move all $C_i^{n+1}$ terms to the RHS,
+Multiply through by $\Delta t$ and move all $C_i^{n+1}$ terms to the RHS. Designate $\beta = \frac{\Delta t}{\Delta z^2}$ .
 
-$$\begin{split} C_i^{n} = C_i^{n+1}  + \frac{\Delta t w_s}{\Delta z}(C_{i+1}^{n+1} - C_{i}^{n+1}) - C_{i+1}^{n+1} \left( \beta  \left(\kappa_{i +1}^{n} +  \kappa_{i} \right)  \right) \\  -
- C_{i}^{n+1} \left( \Delta t \Gamma + \beta  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-- C_{i-1}^{n+1} \left( \beta  \left(\kappa_{i -1}^{n} + \kappa_{i}^{n} \right)  \right)  \end{split} $$
+$$\begin{split} C_i^{n} = C_i^{n+1}  + \frac{\Delta t w_s}{\Delta z}(C_{i+1}^{n+1} - C_{i}^{n+1}) - \Gamma C_i^{n+1}  \\ -  C_{i+1} \beta \left( \kappa_{ i + 1/2} \right)   - 
+ C_{i} \beta\left(-\kappa_{ i + 1/2} - \kappa_{ i - 1/2}  \right) 
+- C_{i-1} \beta \left( \kappa_{ i - 1/2}  \right)  \end{split} $$
 
 and lastly group by spatial index for $C$, 
 
-$$\begin{split} C_i^{n} = C_{i+1}^{n+1} \left( \frac{\Delta t w_s}{\Delta z} - \beta  \left(\kappa_{i +1}^{n} +  \kappa_{i} \right) \right) \\ 
-+ C_i^{n+1} \left( 1  -  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta  \left(\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n} \right) \right) \\ 
-+ C_{i-1}^{n+1} \left( \beta  \left(-\kappa_{i -1}^{n}  - \kappa_{i}^{n} \right)  \right)  \end{split} $$
+$$\begin{split} C_i^{n} = C_{i+1}^{n+1} \left(-\frac{\Delta t w_s}{\Delta z} -  \beta \kappa_{ i + 1/2} \right) \\ 
++ C_i^{n+1} \left( 1  +  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta ( \kappa_{ i + 1/2} +\kappa_{ i - 1/2}) \right)  \\ 
++ C_{i-1}^{n+1} \left( -\beta  \kappa_{ i - 1/2}  \right)  \end{split} $$
 
 \subsection{Boundary conditions ($w_s<0$)}
-For boundary conditions, we want zero flux at the bed ($C_0$) and surface ($C_N$). 
+For boundary conditions, we want zero flux at the bed ($C_0$) and surface ($C_N$). However, due to the advective flux, we need to consider that no algae should \textit{enter} the surface cell. 
+
+$$ \frac{C_N^{n+1} - C_N^n}{\Delta t} - w_s \frac{\cancel{C_{N+1}^{n+1}} - C_{N}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)_N^{n+1} + \Gamma C_N^{n+1}  $$
+
+We know that 
 $$  \frac{C_{N} - C_{N+1}}{\Delta z} = 0 $$ 
-$$  \frac{C_{-1} - C_{0}}{\Delta z} = 0 $$ 
-which shakes out to
-$$  C_{N}  = C_{N+1}$$ 
-and by the same logic, 
-$$  C_{0}  = C_{-1}$$ 
 
-\subsubsection{Zero-flux at top of water column ($w_s<0$)}
-We plug in our expression for $C_{N}  = C_{N+1}$ into our discretized equation, evaluated at $C_{N}$. 
-
-$$\begin{split} C_N^{n} = C_{N}^{n+1} \left( \frac{\Delta t w_s}{\Delta z} - \beta  \left(\kappa_{N+1}^{n} +  \kappa_{N} \right) \right) \\ 
-+ C_N^{n+1} \left( 1  -  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta  \left(\kappa_{N+1}^{n} + 2\kappa_{N}^{n} + \kappa_{N-1}^{n} \right) \right) \\ 
-+ C_{N-1}^{n+1} \left( \beta  \left(-\kappa_{N-1}^{n}  -  \kappa_{N}^{n} \right)  \right)  \end{split} $$
+and plug this into our expression for $C_N$. Note that we also set the advective flux from the $N+1$ cell to zero. 
 
 
-Giving us the following expression for $C_{N}$,
-$$  C_N^{n} =  C_N^{n+1} \left( 1  - \Delta t \Gamma + \beta  \left( \kappa_{N}^{n} + \kappa_{N-1}^{n} \right) \right) 
-+ C_{N-1}^{n+1} \left( \beta  \left(-\kappa_{N-1}^{n}  -  \kappa_{N}^{n} \right)  \right)  $$
+$$\begin{split} C_N^{n} = C_{N+1}^{n+1} \left(\cancel{-\frac{\Delta t w_s}{\Delta z}} -  \beta \kappa_{ N + 1/2} \right) \\ 
++ C_n^{n+1} \left( 1  +  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta ( \kappa_{ N + 1/2} +\kappa_{ N - 1/2}) \right)  \\ 
++ C_{N-1}^{n+1} \left( -\beta  \kappa_{ N - 1/2}  \right)  \end{split} $$
+
+
+
+giving us the following expression for $C_{N}$,
+$$  C_N^{n} =  C_N^{n+1} \left( 1  + \frac{\Delta t w_s}{\Delta z} -  \Delta t \Gamma + \beta \kappa_{ N - 1/2}  \right) 
++ C_{N-1}^{n+1} \left( \beta  \kappa_{ N - 1/2} \right)  $$
+
+In code, we implement this with,
+```{python}{eval|false}
+        # Top-Boundary: no flux for scalars
+        aA[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz 
+        dA[top] = Ap[top]
+```
+
 
 \subsubsection{Zero-flux through the bed ($w_s<0$)}
-We plug in our expression for $C_{0}  = C_{1}$ into our discretized equation, evaluated at $C_{0}$, 
+We plug in our expression for $C_{0}  = C_{1}$ into our discretized equation, evaluated at $C_{0}$. We are not concerned about flux into the bed, and consider diatom settling to be a loss term.
 
-$$\begin{split} C_0^{n} = C_{1}^{n+1} \left( \frac{\Delta t w_s}{\Delta z} - \beta  \left(\kappa_{1}^{n} +  \kappa_{0} \right) \right) \\ 
-+ C_0^{n+1} \left( 1  -  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta  \left(\kappa_{1}^{n} + 2\kappa_{0}^{n} + \kappa_{-1}^{n} \right) \right) \\ 
-+ C_{0}^{n+1} \left( \beta  \left(-\kappa_{-1}^{n}  -  \kappa_{0}^{n} \right)  \right)  \end{split} $$
+$$\begin{split} C_0^{n} = C_{0}^{n+1} \left(-\frac{\Delta t w_s}{\Delta z} -  \beta \kappa_{  1/2} \right) \\ 
++ C_0^{n+1} \left( 1  +  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta ( \kappa_{ 1/2} +\kappa_{ - 1/2}) \right)  \\ 
++ C_{-1}^{n+1} \left( -\beta  \kappa_{ - 1/2}  \right)  \end{split} $$
 
-$$  C_0^{n} = C_{1}^{n+1} \left( \frac{\Delta t w_s}{\Delta z} - \beta  \left(\kappa_{1}^{n} +  \kappa_{0} \right) \right) \\ 
-+ C_0^{n+1} \left( 1  -  \frac{\Delta t w_s}{\Delta z} - \Delta t \Gamma + \beta  \left(\kappa_{1}^{n} + \kappa_{0}^{n}  \right) \right)$$
+$$ C_0^{n} =  C_0^{n+1} \left( 1  - \Delta t \Gamma + \beta \kappa_{ - 1/2} \right) + C_{-1}^{n+1} \left( -\beta  \kappa_{ - 1/2}  \right)  $$
 
+In code, we implement this with,
+```{python}{eval|false}
+        # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
+        cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+```
 
-
+\noindent\rule{\textwidth}{1pt}
+<!-- ********************************************************************** -->
 \subsection{Discretized equation when $w_s>0$}
-We now explore the discretization for a plankton with a positive swimming velocity. We plug in our expression for the Laplacian discretized in space (Eq. \ref{eq:laplacian}), evaluated at time $n+1$,
+We now explore the discretization for a plankton with a positive swimming velocity, given in Eq. \ref{eq:float}.
 
-$$ \begin{split} C_i^{n+1} - C_i^n +  \Delta t w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z} = C_{i+1}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(\kappa_{i +1}^{n} +  \kappa_{i}^{n} \right)  \right) \\  + 
- C_{i}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(-\kappa_{i +1}^{n} - 2\kappa_{i}^{n} - \kappa_{i-1}^{n} \right)  \right) \\
-+ C_{i-1}^{n+1} \left( \frac{\Delta t}{2 \Delta z^2}  \left(\kappa_{i -1}^{n} + \kappa_{i}^{n} \right)  \right)  \\ + \Delta t \Gamma C_i^{n+1} 
+
+$$ \frac{C_i^{n+1} - C_i^n}{\Delta t} + w_s \frac{C_{i}^{n+1} - C_{i-1}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_i^{n+1}  $$
+
+ We plug in our expression for the Laplacian discretized in space (Eq. \ref{eq:laplacian}),
+$$ \begin{split} C_i^{n+1} - C_i^n +  \Delta t w_s \frac{C_i^{n+1} - C_{i-1}^{n+1}}{\Delta z} =  \Delta t \Gamma C_i^{n+1}  +  C_{i+1} \beta \left( \kappa_{ i + 1/2} \right)   + \\ 
+ C_{i} \beta \left(-\kappa_{ i + 1/2} - \kappa_{ i - 1/2}  \right) 
++ C_{i-1} \beta \left( \kappa_{ i - 1/2}  \right)  
   \end{split} $$
 
 
 This all simplifies out to, 
 
-$$ \begin{split}  C_i^n  =  C_{i+1}^{n+1} \left( - \beta (\kappa_{i}^{n} + \kappa_{i+1}^{n}) \right) \\
-+  C_{i}^{n+1} \left(1 - \Delta t \Gamma_{i}^n + \frac{\Delta t w_s}{\Delta z} +  \beta (\kappa_{i +1}^{n} + 2\kappa_{i}^{n} + \kappa_{i-1}^{n})  \right) \\ 
-+ C_{i-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{i -1}^{n} + \kappa_{i}^{n} ) \right) \end{split} $$
+\begin{equation} \label{eq:sink0} \begin{split}  C_i^n  =  C_{i-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{i -1/2}^{n}  ) \right) \\
++  C_{i}^{n+1} \left(1 - \Delta t \Gamma_{i}^n + \frac{\Delta t w_s}{\Delta z} +  \beta (\kappa_{i + 1/2}^{n} + \kappa_{i - 1/2}^{n} \right) \\ 
++ C_{i+1}^{n+1} \left( - \beta (\kappa_{i + 1/2} \right) \\
+ \end{split} \end{equation}
 
 \subsection{Boundary conditions ($w_s>0$)}
 For boundary conditions, we apply the same conditions-- 
 $$  C_{N}  = C_{N+1}$$ 
 $$  C_{0}  = C_{-1}$$ 
-However, we are going to run into issues with the surface of the water column, as we plankton cannot ``settle out" of the water column. 
+
+Note however that there is no equivalent ``settling" term for floating algae. Instead, mass cannot enter or leave at the bed or the surface. This requires us to address the advective flux at both boundaries. 
+
+
+![Boundary condition for plankton advection depends on the direction of $w_s$ (sinking or swimming)](diagrams/4x/Asset%205sinkvswim.png){height=150}
 
 \subsubsection{Zero-flux through the bed ($w_s>0$)}
+Compared to a sinking particle, however, now we must worry about algae advecting from the bed into the water column. We thus cancel out the advective flux coming fron the $-1$ cell at the bed. 
 
-$$ \begin{split}  C_0^n  =  C_{1}^{n+1} \left( - \beta (\kappa_{0}^{n} + \kappa_{1}^{n}) \right) \\
-+  C_{0}^{n+1} \left(1 - \Delta t \Gamma  + \frac{\Delta t w_s}{\Delta z} +  \beta (\kappa_{1}^{n} + 2\kappa_{0}^{n} + \kappa_{-1}^{n}) \right) \\ 
-+ C_{0}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{-1}^{n} +  \kappa_{0}^{n} ) \right) \end{split} $$ 
+$$ \frac{C_0^{n+1} - C_0^n}{\Delta t} + w_s \frac{C_{0}^{1} - \cancel{C_{-1}^{n+1}}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{1} + \Gamma C_0^{1}  $$
 
-$$   C_0^n  =  C_{1}^{n+1} \left( - \beta (\kappa_{0}^{n} + \kappa_{1}^{n}) \right) +  C_{0}^{n+1} \left(1 - \Delta t \Gamma  +  \beta (\kappa_{1}^{n} + \kappa_{0}^{n} ) \right)  $$ 
+We apply $C_{0}  = C_{-1}$ to equation \ref{eq:sink0},
+\begin{equation} \begin{split}  C_0^n  =  C_{0-1}^{n+1} \left( \cancel{- \frac{\Delta t w_s}{\Delta z}} - \beta  (\kappa_{-1/2}^{n}  ) \right) \\
++  C_{0}^{n+1} \left(1 - \Delta t \Gamma_{0}^n + \frac{\Delta t w_s}{\Delta z} +  \beta (\kappa_{1/2}^{n} + \kappa_{- 1/2}^{n}) \right) \\ 
++ C_{1}^{n+1} \left( - \beta (\kappa_{ 1/2} \right) \\
+ \end{split} \end{equation}
+
+giving us the final boundary condition of 
+
+$$ C_0^n  =  C_{0}^{n+1} \left(1 - \Delta t \Gamma_{0}^n + \frac{\Delta t w_s}{\Delta z} +  \beta \kappa_{1/2}^{n}  \right) + C_{1}^{n+1} \left( - \beta \kappa_{ 1/2} \right) $$ 
+
+```{python}{eval|false}
+     # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
+        cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+```
+
 
 \subsubsection{Zero-flux through the surface ($w_s>0$)}
+Last but not least, we address the surface boundary condition, applying $C_{N}  = C_{N+1}$. Here we also ensure that we impose zero flux through the surface. 
 
-$$ \begin{split}  C_N^n  =  C_{N}^{n+1} \left( - \beta (\kappa_{N}^{n} + \kappa_{N+1}^{n}) \right) \\
-+  C_{N}^{n+1} \left(1 - \Delta t \Gamma_{N}^n + \frac{\Delta t w_s}{\Delta z} +  \beta (\kappa_{N +1}^{n} + 2\kappa_{N}^{n} + \kappa_{N-1}^{n})  \right) \\ 
-+ C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{N -1}^{n} + \kappa_{N}^{n} ) \right) \end{split} $$
-
-$$  C_N^n  =  C_{N}^{n+1} \left(1 - \Delta t \Gamma_{N}^n + \frac{\Delta t w_s}{\Delta z} +  \beta ( \kappa_{N}^{n} + \kappa_{N-1}^{n})  \right) + C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{N -1}^{n} + \kappa_{N}^{n} ) \right) $$
-
-However, we also need to consider advective flux. Thus, we \textit{add back} the mass lost to advective flux. 
-
-$$ C_{N}^{n+1}  = \tilde{C}_{N}^{n+1} + \frac{w_s \tilde{C}_{N}^{n+1} \Delta t}{\Delta z} $$ 
+$$ \frac{C_N^{n+1} - C_N^n}{\Delta t} + w_s \frac{\cancel{C_{N}^{n+1}} - C_{N-1}^{n+1}}{\Delta z}  = \left( \kappa_t \frac{\partial C}{\partial z} \right)^{n+1} + \Gamma C_N^{n+1}  $$
 
 
+
+$$ \label{eq:sink0} \begin{split}  C_N^n  =  C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{N -1/2}^{n}  ) \right) \\
++  C_{N}^{n+1} \left(1 - \Delta t \Gamma_{N}^n + \cancel{\frac{\Delta t w_s}{\Delta z}} +  \beta (\kappa_{N + 1/2}^{n} + \kappa_{N - 1/2}^{n} \right) \\ 
++ C_{N}^{n+1} \left( - \beta \kappa_{N + 1/2} \right) \\
+ \end{split} $$
+
+$$ C_N^n  =  C_{N-1}^{n+1} \left( - \frac{\Delta t w_s}{\Delta z} - \beta  (\kappa_{N -1/2}^{n}  ) \right) +  C_{N}^{n+1} \left(1 - \Delta t \Gamma_{N}^n +  \beta ( \kappa_{N - 1/2}^{n} \right) $$
+
+```{python}{eval|false}
+        # Top-Boundary: no flux for scalars
+        aA[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) 
+        dA[top] = Ap[top]
+```
 \section{Code}
 In code, to solve this tridiagonal system, we initialize three vectors A, B, and C to represent the diagonals of the matrix. 
 
@@ -295,25 +352,42 @@ In code, to solve this tridiagonal system, we initialize three vectors A, B, and
 
 
 ```{python}{eval|false}
- # Initialize empty arrays for tridiagonals of algae matox 
- 
+  # If settling speed is UPWARD (swimming!)
+    if ws>0:
+        aA[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
+        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  \
+        + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        dA = Ap
+
+        # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
+        cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+
+        # Top-Boundary: no flux for scalars
+        aA[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1])
+        dA[top] = Ap[top]
+
+    # If settling speed is DOWNWARD (sinking!)
+    if ws<=0:
+        aA[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
+        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  \ 
+        + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        dA = Ap
+
+        # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
+        cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+
+        # Top-Boundary: no flux for scalars
+        aA[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz 
+        dA[top] = Ap[top] 
 ```
-
-
-
-
-In code, we impose this with, 
-```{python}{eval|false}
-    aA[top] = -ws*dtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-
-``` 
-
-
-Which (again), looks like this in code:
-```{python}{eval|false}
-
-``` 
-
 
 \section{Phytoplankton Growth}
 Now that we have an equation for advection-diffusion of phytoplankton, we can dig into the growth and loss terms. Here, I'll follow the conventions set forth in Huisman's paper. 
@@ -355,13 +429,13 @@ photic_depth =  z[I<(0.9 * I_in)][-1]
 
 Some examples of what algal growth looks like, using common parameters sourced from the Huisman paper, are shown below. In these examples there's no fluid motion at all (or particle sinking)-- just looking purely at growth rate as a function of light. With constant light, we see that algal growth increases monotonically -- within three days the population has increased over four-fold. Note that below the photic zone, however, algal are dying (albeit much more slowly). Thus, the net change in \textit{total algal population} is determined by the \textit{ratio of the photic zone} to the rest of the water column (assuming algae are dispersed uniformly). While growth may expload at the surface, if the rest of the algae are steadily dying, the net population could decline. 
 
-![Algae Concentration with constant light](Algae Concentration with constant light.png){height=250}
+<!-- ![Algae Concentration with constant light](Algae Concentration with constant light.png){height=250} -->
 
 We can also impose a more-realistic light field which varies as a function of time (e.g., the diurnal light cycle.) Now, the algae are only exposed to light for 12 hours a day. They resulting figure shows a far more variable algal mass. If we sum the concentration over the water column, we see that mass is declining.  
-
+<!-- 
 ![Algae Concentration with diurnal light](Algae Concentration with diurnal light.png){height=250}
 
-![Total algal mass with diurnal light over time.](/Users/siennawhite/research/turbulence-model/Algae Mass with diurnal light.png){height=200}
+![Total algal mass with diurnal light over time.](/Users/siennawhite/research/turbulence-model/Algae Mass with diurnal light.png){height=200} -->
 
 \newpage
 
@@ -379,11 +453,11 @@ Thus, we expect $\Gamma$ to vary as a function of depth and time. -->
 \section{Combining growth with advection-diffusion}
 Finally, we can plug in our loss+growth equation with algae in the advection-diffusion model. Here are plots of velocity, $\kappa_z$, and algae concentration. 
 
-![Velocity](U.png){height=250}
+<!-- ![Velocity](U.png){height=250}
 
 ![$\kappa_z$](kappa_z.png){height=250}
 
-![Algae Concentration with constant light + flow](algae.png){height=250}
+![Algae Concentration with constant light + flow](algae.png){height=250} -->
 
 
 \newpage

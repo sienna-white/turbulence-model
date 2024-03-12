@@ -19,6 +19,7 @@ variable2name['Kq'] = r'turbulent diffusivity ($\kappa_q$)'
 variable2name['N_BV'] = r'Brunt-Vaisala frequency ($N_{BV}$)'
 variable2name['algae'] = r'Algae concentration'
 variable2name['biomass'] = r'Total algae biomass'
+variable2name['net_growth'] = r'Net Algae Growth (loss + growth)'
 
 
 variable2units = {}
@@ -34,7 +35,17 @@ variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV'] = r'1/s'
 variable2units['algae'] = r'10$^6$ cells/m$^2$'
 variable2units['biomass'] = r'10$^6$ cells'
+variable2units['net_growth'] = r'hour$^{-1}$'
 
+def diurnal_light(t, I_max):
+    '''Function to generate estimate of light according to diurnal cycle.
+     Inputs: t (in seconds); I_max (maximum light intensity/ light at noon)'''
+    hour = t/3600
+    period = (2*np.pi)/24
+    phase_shift = 12 
+    light = I_max * np.cos(period * (hour - phase_shift))
+    light = light.clip(min=0) # During night, light is zero
+    return light
 
 def initialize_abcd(N):
     a = np.zeros(N)
@@ -74,23 +85,14 @@ class SavedProfiles:
     def store_z(self, z):
         self.z = z
 
-    def save_profile_at_timestep(self, profile_num, time, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, biomass):
+    def save_profile_at_timestep(self, profile_num, time, **kwargs):
+        #U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, biomass):
         profile_num = profile_num//self.isave
-        self.saved_profiles['U'][:,profile_num] = U
-        self.saved_profiles['C'][:,profile_num] = C
-        self.saved_profiles['Q2'][:,profile_num] = Q2
-        self.saved_profiles['Q2L'][:,profile_num] = Q2L
-        self.saved_profiles['rho'][:,profile_num] = rho
-        self.saved_profiles['L'][:,profile_num] = L
-        self.saved_profiles['nu_t'][:,profile_num] = nu_t
-        self.saved_profiles['Kz'][:,profile_num] = Kz
-        self.saved_profiles['Kq'][:,profile_num] = Kq
-        self.saved_profiles['N_BV'][:,profile_num] = N_BV
-        self.saved_profiles['algae'][:,profile_num] = algae
         self.saved_profiles['time'][profile_num] = time
-        self.saved_profiles['biomass'][:,profile_num] = biomass
+        for key, value in kwargs.items():
+            self.saved_profiles[key][:,profile_num] = value
 
-    def plot_biomass(self, passed_string=''):
+    def plot_biomass(self, passed_string='', show=True):
 
         def seconds2hours(seconds):
             return seconds/3600
@@ -106,18 +108,19 @@ class SavedProfiles:
         ax.set_xlabel('Time (s)')
         ax.set_title(variable2name["biomass"] + passed_string)
         plt.tight_layout()
-        plt.show()
+        if show:
+            plt.show()
         return fig, ax  
     
-    def plot_profiles(self, variable, skip=1, passed_string=''):
+    def plot_profiles(self, variable, skip=1, passed_string='', show=True):
 
         def seconds2hours(seconds):
             return seconds/3600
         
         fig, ax = plt.figure(figsize=(8,4)), plt.gca()
         plots = np.arange(0, self.n_profiles, skip)
-        if len(plots)>6: 
-            legend_ind = np.floor(len(plots)/6)
+        if len(plots)>10: 
+            legend_ind = np.floor(len(plots)/10)
         else:
             legend_ind = 1
 
@@ -151,5 +154,6 @@ class SavedProfiles:
         # ax.hlines(0, color = 'k', linestyle = '--')
         ax.set_title(variable2name[variable] + passed_string)
         plt.tight_layout()
-        plt.show()
+        if show:
+            plt.show()
         return fig, ax  

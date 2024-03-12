@@ -45,7 +45,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  = 1440*3 # 400  # number of time steps 
+M  =  1440*3*6 # 400  # number of time steps 
 
 read_from_input=False
 
@@ -57,37 +57,42 @@ if read_from_input:
             exec(line)
 else: 
     # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-    isave = 30
+    isave = 100
 
     # Algae parameters 
     background_turbidity =  0.16
     I_in = 350 
 
+    '''
+
+    Diatoms ws = -1.38e-5 m/s
+    Cyanobacteria = 1.38e-4 m/s
+    '''
     # Show --> ws=1e-7
-    diatoms = Algae_Species(k = 0, #0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                    pmax = 0.05,     # maximum specific growth rate [1/hour]
-                    ws = 1e-5, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+    diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+                    pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                    ws = 1.4e-5, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
                     name = "Diatoms",
                     self_shading=False,
-                    net=False)
-    init = 100 
+                    net=True)
+    init = 200 
 
     # Pressure Forcing -> Need to modify to allow for time variable Px.
     Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
     T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-print("WS IS %2.9f m/s" % (diatoms.ws))
+# print("Growth= %2.9f m/s" % (diatoms.ws))
 
 diatoms.set_initial_concentration(N, init=init, opt='linear')
 diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 algae = diatoms.c
-print("line 85; total mass = %f" % sum(algae))
 courant = abs(diatoms.ws * dt)
 assert(courant<dz)
-RUN_INFO=' Ws=%2.2e m.p.s' % diatoms.ws
+print(diatoms.pmax)
+RUN_INFO=' growth= %2.2e' % diatoms.pmax
 
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
@@ -212,16 +217,20 @@ Kz = (Sh * Q * L) + nu
 
 # Intialize an object for saving profiles throughout the model run
 n_profiles = int(M/isave)
-variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV','algae', 'biomass']
+variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV','algae', 'biomass', 'net_growth']
 saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
 
 # Save initial condition (first profile at time zero)
-saved_profiles.save_profile_at_timestep(0, 0, U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, sum(algae))
+data = {'U': U, 'C': C, 'Q2': Q2, 
+        'Q2L': Q2L, 'rho': rho, 'L': L,
+        'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
+        'N_BV': N_BV, 'algae': algae, 'biomass': sum(algae), 'net_growth': algae*0}
+saved_profiles.save_profile_at_timestep(0, 0, **data)
 
 # Store z in our object so we can plot the profiles later 
 saved_profiles.store_z(z)
 
-def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
+def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
 
     '''
     Time-advancing algorithm. Steps a single timestep for c, rho, q2, q2l, l, kz, nu_t, kq
@@ -309,11 +318,9 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     #***************************************************************************
     ws    = diatoms.ws 
     wsdtdz  = abs(ws*dt)/dz
+    light =  lib.diurnal_light(time, 350)
+    gamma = diatoms.get_loss_and_growth(I_in = light, current_concentration = Ap)
 
-    gamma = diatoms.get_loss_and_growth(I_in = 350, current_concentration = Ap)
-    # print(gamma)
-
-    
     # If settling speed is UPWARD (swimming!)
     if ws>0:
         aA[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
@@ -350,7 +357,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
 
     # Thomas algorithm to solve for C
     algae = lib.TDMA(aA, bA, cA, dA, N)  
-
+    diatoms.c = algae
     # if ws>0:
     #     algae[top] = algae[top] + Ap[top]*wsdtdz
 
@@ -458,7 +465,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae
+    return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, gamma
 
 
 #***************************************************************************
@@ -466,32 +473,42 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae):
 #***************************************************************************
 for m in range(1,M):
    
-    if m%100 == 0:
-        print('Time step = %d' % m)
+    # if m%200 == 0:
+    #     print('Time step = %d' % m)
 
     # Uses BGO/Mellor-Yamada 2-equation closure
     # print("START OF LOOP-- ALGAE MASS IS %2.2f" % sum(algae))
 
-    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae) 
+    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, gamma = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, m) 
 
     diatoms.save_total_mass()
     if m%isave == 0:
         diatoms.save_total_mass()
-        saved_profiles.save_profile_at_timestep(m, t[m], U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, sum(algae))
+        # Pack data into dictionary structure before saving 
+        data = {'U': U, 'C': C, 'Q2': Q2, 
+                'Q2L': Q2L, 'rho': rho, 'L': L,
+                'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
+                'N_BV': N_BV, 'algae': algae, 'biomass': sum(algae),
+                'net_growth' : gamma}
+        saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
 print(time.time()  - t1) 
 
 #***************************************************************************
-saved_profiles.plot_profiles('Kz', skip=2)
-# f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO)
+# saved_profiles.plot_profiles('Kz', skip=4)
+# f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO, show=False)
+# plt.close()
 # f0.savefig('output/U-%s.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO)
-a0.set_ylim(4000-2,4000+2)
-f0.savefig('output/biomass-%s_px2e-6.png' % RUN_INFO)
+if diatoms.net:
+    f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=True)
 
-f0, a0 = saved_profiles.plot_profiles('algae', skip=2, passed_string=RUN_INFO)
-f0.savefig('output/algae-%s_px2e-6.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=True)
+# a0.set_ylim(4000-10,4000+10)
+# f0.savefig('output/diurnal_light/biomass-%s_growth2e-6.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=True)
+# f0.savefig('output/diurnal_light/algae-%s_px2e-6.png' % RUN_INFO)
 
 
 # # saved_profiles.plot_profiles('C', skip=2)
