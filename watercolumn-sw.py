@@ -54,10 +54,6 @@ output=True
 
 
 
-
-
-
-
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 1
 
@@ -92,12 +88,18 @@ if len(sys.argv) > 1:
     # Get specific command-line arguments
     arg0 = sys.argv[1] # filepath
     arg1 = sys.argv[2] # ws 
-    arg2 = sys.argv[3] # Px0
+    arg2 = sys.argv[3] # pmax
 
-    output_csv = arg0 #'pressure_vs_ws.csv'
-    diatoms.ws =float(arg1)
+    output_csv = arg0 
+
     Px0 = float(arg2)
+    diatoms.ws =float(arg1)
 
+    # diatoms.pmax = float(arg2)
+    def save_at_end(result):
+        lib.save_output(output_csv, Px0, diatoms.ws, result, header=["pressure", "ws", "output"])
+
+    # print("Running simulation w/ ws = %e and pmax = %e" % (diatoms.ws, diatoms.pmax))
     print("Running simulation w/ ws = %e and Px0 = %e" % (diatoms.ws, Px0))
 
     # print("Reading in parameters from external file.")
@@ -105,7 +107,7 @@ if len(sys.argv) > 1:
     #     for line in f:
     #         exec(line)
 
-# print("Growth= %2.9f m/s" % (diatoms.ws))
+
 
 diatoms.set_initial_concentration(N, init=init, opt='linear')
 diatoms.save_total_mass()
@@ -539,8 +541,9 @@ if plot:
 
 if output:
     result= saved_profiles.does_biomass_increase()
+    save_at_end(result)
 
-    lib.save_output(output_csv, Px0, diatoms.ws, result, header=["pressure", "ws", "output"])
+    
 
 # # saved_profiles.plot_profiles('C', skip=2)
 
