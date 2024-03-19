@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from turbulence_model import Turbulence_Model as TM 
 import matplotlib as mpl
-
+import pandas as pd 
+import os
 
 ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV']
 variable2name = {} 
@@ -112,6 +113,10 @@ class SavedProfiles:
             plt.show()
         return fig, ax  
     
+
+    def does_biomass_increase(self):
+        return sum(self.saved_profiles['algae'][-1]) > sum(self.saved_profiles['algae'][0])
+    
     def plot_profiles(self, variable, skip=1, passed_string='', show=True):
 
         def seconds2hours(seconds):
@@ -157,3 +162,27 @@ class SavedProfiles:
         if show:
             plt.show()
         return fig, ax  
+
+
+def save_output(csv_file, var1, var2, output, header):
+
+    # Check if the CSV file exists
+    file_exists = os.path.isfile(csv_file)
+
+    data = {header[0]: [var1], header[1]: [var2], header[2]: [output]}
+    df = pd.DataFrame(data)
+
+    # Append the DataFrame to the CSV file
+    if file_exists:
+        mode = 'a'
+        header=False
+    else:
+        mode = 'w'
+        header=True
+
+    df.to_csv(csv_file, mode=mode, index=False, header=header)
+    
+
+
+
+

@@ -23,9 +23,9 @@ import matplotlib as mpl
 import watercolumn_lib as lib
 from phytoplankton import Algae_Species
 import time
-import sys
+import threading
 
-t1 = time.time()  # Time our simluation 
+time0 = time.time()  # Time our simluation 
 
 
 '''
@@ -49,61 +49,40 @@ dt = 10 #60   # (seconds) size of time step
 M  =  1440*3*6 # 400  # number of time steps 
 
 read_from_input=False
-plot=False
-output=True
 
 
+if read_from_input:
+    print("Reading in parameters from external file.")
+    with open('watercolumn_param.txt') as f:
+        for line in f:
+            exec(line)
+else: 
+    # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
+    isave = 100
 
+    # Algae parameters 
+    background_turbidity =  0.16
+    I_in = 350 
 
+    '''
 
+    Diatoms ws = -1.38e-5 m/s
+    Cyanobacteria = 1.38e-4 m/s
+    '''
+    # Show --> ws=1e-7
+    diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+                    pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                    ws = 1.4e-5, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+                    Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
+                    Li = 0.006,      # specific loss rate [1/hour]
+                    name = "Diatoms",
+                    self_shading=False,
+                    net=True)
+    init = 200 
 
-
-# Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 1
-
-# Algae parameters 
-background_turbidity =  0.16
-I_in = 350 
-
-'''
-
-Diatoms ws = -1.38e-5 m/s
-Cyanobacteria = 1.38e-4 m/s
-'''
-# Show --> ws=1e-7
-diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
-                Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
-                Li = 0.006,      # specific loss rate [1/hour]
-                name = "Diatoms",
-                self_shading=False,
-                net=True)
-init = 200 
-
-# Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
-T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
-
-
-# This section only executes if the script is passed arguments from the command line
-if len(sys.argv) > 1:
-
-    # Get specific command-line arguments
-    arg0 = sys.argv[1] # filepath
-    arg1 = sys.argv[2] # ws 
-    arg2 = sys.argv[3] # Px0
-
-    output_csv = arg0 #'pressure_vs_ws.csv'
-    diatoms.ws =float(arg1)
-    Px0 = float(arg2)
-
-    print("Running simulation w/ ws = %e and Px0 = %e" % (diatoms.ws, Px0))
-
-    # print("Reading in parameters from external file.")
-    # with open('watercolumn_param.txt') as f:
-    #     for line in f:
-    #         exec(line)
+    # Pressure Forcing -> Need to modify to allow for time variable Px.
+    Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+    T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 # print("Growth= %2.9f m/s" % (diatoms.ws))
 
@@ -115,8 +94,6 @@ courant = abs(diatoms.ws * dt)
 assert(courant<dz)
 print(diatoms.pmax)
 RUN_INFO=' growth= %2.2e' % diatoms.pmax
-# RUN_INFO=' ws= %2.2e' % diatoms.ws
-
 
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
@@ -254,30 +231,14 @@ saved_profiles.save_profile_at_timestep(0, 0, **data)
 # Store z in our object so we can plot the profiles later 
 saved_profiles.store_z(z)
 
-def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
 
-    '''
-    Time-advancing algorithm. Steps a single timestep for c, rho, q2, q2l, l, kz, nu_t, kq
-    All diffusion/viscous terms handled implicitly
-    '''
-    #***************************************************************************
-    #  Initialize Tridiagonal Arrays 
-    #***************************************************************************
-    # Initialize tridiagonal arrays for C/temperature. dC is the RHS vector
-    aC, bC, cC, dC = lib.initialize_abcd(N)
+#***************************************************************************
+#   Advance velocity (U,V)
+#***************************************************************************
+# turbulence['L'], turbulence['nu_t'],  scalars['N_BV'], velocity['U'], new_velocity
+def wc_advance_velocity(L, nu_tp, N_BV, Q2, Up, new_velocity):
 
-    # Initialize tridiagonal arrays for turbulent kinetic energy
-    aQ2, bQ2, cQ2, dQ2 = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for Q^2 * L (turbulent kinetic energy times a lengthscale)
-    aQ2L, bQ2L, cQ2L, dQ2L = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for velocity
-    aU, bU, cU, dU = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for algae 
-    aA, bA, cA, dA = lib.initialize_abcd(N)
-
+    
     Px = np.zeros(N)
     Q = np.sqrt(Q2)
 
@@ -287,13 +248,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     else: 
         Px = Px + Px0*math.cos(2*math.pi*t[m]/(3600*T_Px))
 
-    # Update shear velocity at bottom boundary. Note explicit dependence on C_D
-    ustar = abs(U[0])*math.sqrt(C_D); 
-
-    #***************************************************************************
-    #   Update stability parameters 
-    #***************************************************************************
-        
     # Update Gh (stratification correction)
     Gh = -((N_BV*L)/(Q + SMALL))**2
     Gh = np.clip(Gh, -0.28, 0.0233)
@@ -302,23 +256,11 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     Sm = calculate_sm(Gh) 
     Sh = calculate_sh(Gh) 
     nu_t = (Sm * Q * L) + nu # Turbulent diffusivity for Q2
-    Kq = (Sq * Q * L) + nu   # Turbulent viscosity
-    Kz = (Sh * Q * L) + nu
-    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never = zero 
 
-    #***************************************************************************
-    #   Store last time's step variables (f --> fp, q2 --> q2p, etc)
-    #***************************************************************************
-    Ap = algae 
-    Cp = C
-    Q2p,Q2Lp  = Q2, Q2L
-    Lp, Kzp, Kqp, nu_tp = L, Kz, Kq, nu_t
-    N_BVp = N_BV
-    Up, Vp = U, V
+    # Initialize tridiagonal arrays for velocity
+    aU, bU, cU, dU = lib.initialize_abcd(N)
     
-    #***************************************************************************
-    #   Advance velocity (U,V)
-    #***************************************************************************
+
     aU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[0:top-1])
     bU[1:top] = 1 + beta/2*(nu_tp[2:top+1] + 2*nu_tp[1:top] + nu_tp[0:top-1])
     cU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[2:top+1])
@@ -337,12 +279,39 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
 
+    new_velocity['U'] = U
+    # return U 
+
+
+#***************************************************************************
+#   Advance scalars (C, algae)
+#***************************************************************************
+def wc_advance_scalars(L, nu_t, Kz, Kq, time, scalars, new_scalars):
+
+    rho   = scalars['rho']
+    N_BV  = scalars['N_BV']
+    C     = scalars['C']
+    algae = scalars['algae']
+
+    # Initialize tridiagonal arrays for C/temperature. dC is the RHS vector
+    aC, bC, cC, dC = lib.initialize_abcd(N)
+
+    # Initialize tridiagonal arrays for algae 
+    aA, bA, cA, dA = lib.initialize_abcd(N)
+
+    #***************************************************************************
+    #   Store last time's step variables (f --> fp, q2 --> q2p, etc)
+    #***************************************************************************
+    Ap = algae 
+    Cp = C
+    Kzp = Kz
+
     #***************************************************************************
     #   Advance algae! // need to figure out to include settling velocity / source + sink
     #***************************************************************************
     ws    = diatoms.ws 
     wsdtdz  = abs(ws*dt)/dz
-    light =  350 # lib.diurnal_light(time, 350)
+    light =  lib.diurnal_light(time, 350)
     gamma = diatoms.get_loss_and_growth(I_in = light, current_concentration = Ap)
 
     # If settling speed is UPWARD (swimming!)
@@ -382,8 +351,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     # Thomas algorithm to solve for C
     algae = lib.TDMA(aA, bA, cA, dA, N)  
     diatoms.c = algae
-    # if ws>0:
-    #     algae[top] = algae[top] + Ap[top]*wsdtdz
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
@@ -410,6 +377,34 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     rho = rho0*(1-alpha*(C - 15))  
     N_BV = calculate_brunt_vaisala(rho, N_BV)
 
+    new_scalars['C'] = C
+    new_scalars['N_BV'] = N_BV
+    new_scalars['algae'] = algae
+    new_scalars['rho'] = rho
+    # return N_BV, C, algae
+
+
+def wc_advance_turbulence(Up, N_BVp, turbulence, new_turbulence):
+
+    Q2p = turbulence['Q2'] 
+    Q2Lp = turbulence['Q2L']
+    Lp = turbulence['L']
+    nu_tp = turbulence['nu_t']
+    Kzp = turbulence['Kz']
+    Kqp = turbulence['Kq']
+
+    Q = np.sqrt(Q2p)
+
+    # Update shear velocity at bottom boundary. Note explicit dependence on C_D
+    ustar = abs(U[0])*math.sqrt(C_D); 
+
+    # Initialize tridiagonal arrays for turbulent kinetic energy
+    aQ2, bQ2, cQ2, dQ2 = lib.initialize_abcd(N)
+
+    # Initialize tridiagonal arrays for Q^2 * L (turbulent kinetic energy times a lengthscale)
+    aQ2L, bQ2L, cQ2L, dQ2L = lib.initialize_abcd(N)
+
+
     #***************************************************************************
     #   Advance TKE / Q2  
     #***************************************************************************
@@ -432,7 +427,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     # Top boundary condition
     dissipation =  2 * dt *((Q2p[top]**0.5)/(B1*Lp[top]))
     aQ2[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
-    bQ2[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kq[top-1]) + dissipation
+    bQ2[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kqp[top-1]) + dissipation
     dQ2[top] = Q2p[top] + 0.25*beta*nu_tp[top]*((Up[top] - Up[top-1])**2) -4*dt*Kzp[top]*(N_BVp[top]**2)
 
     # TDMA to solve for q2
@@ -489,58 +484,103 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    return U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, gamma
+    new_turbulence['Q2'] = Q2
+    new_turbulence['Q2L'] = Q2L
+    new_turbulence['L'] = L
+    new_turbulence['nu_t'] = nu_t
+    new_turbulence['Kz'] = Kz
+    new_turbulence['Kq'] = Kq
 
 
 #***************************************************************************
 #   LOOP THROUGH TIME ! 
 #***************************************************************************
-for m in range(1,M):
-   
-    # if m%200 == 0:
-    #     print('Time step = %d' % m)
 
-    # Uses BGO/Mellor-Yamada 2-equation closure
-    # print("START OF LOOP-- ALGAE MASS IS %2.2f" % sum(algae))
+velocity = {} 
+scalars = {}
+turbulence = {} 
 
-    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, gamma = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, m) 
+# Pack initial coditions into dictionary
+scalars['C'] = C
+scalars['N_BV'] = N_BV
+scalars['algae'] = algae
+scalars['rho'] = rho
 
-    diatoms.save_total_mass()
-    if m%isave == 0:
+velocity['U'] = U
+turbulence['Q2'] = Q2
+turbulence['Q2L'] = Q2L
+turbulence['L'] = L
+turbulence['nu_t'] = nu_t
+turbulence['Kz'] = Kz
+turbulence['Kq'] = Kq
+
+if __name__ =="__main__":
+    
+    for m in range(1,M):
+    
+        # if m%200 == 0:
+        #     print('Time step = %d' % m)
+        
+        new_scalar    = {}
+        new_velocity  = {}
+        new_turbulence= {}
+        
+        # t1 = threading.Thread(target=wc_advance_scalars, args=(turbulence['L'], turbulence['nu_t'],
+        #                                                        turbulence['Kz'], turbulence['Kq'],
+        #                                                        t[m], scalars, new_scalar))
+        # t1.start()
+
+        # t2 = threading.Thread(target=wc_advance_turbulence, args=(velocity['U'], scalars['N_BV'] , turbulence, new_turbulence))
+        # t2.start()
+
+        # t3 = threading.Thread(target=wc_advance_velocity, args=(turbulence['L'], turbulence['nu_t'], 
+        #                                                         scalars['N_BV'], turbulence['Q2'], velocity['U'], new_velocity))
+        # t3.start()
+        # t1.join()
+        # t2.join()
+        # t3.join()
+
+        wc_advance_velocity(turbulence['L'], turbulence['nu_t'], scalars['N_BV'], turbulence['Q2'], velocity['U'], new_velocity)
+        wc_advance_turbulence(velocity['U'], scalars['N_BV'], turbulence, new_turbulence)
+        wc_advance_scalars(turbulence['L'], turbulence['nu_t'], turbulence['Kz'], turbulence['Kq'], t[m], scalars, new_scalar)
+        
+        turbulence = new_turbulence 
+        scalars = new_scalar
+        velocity = new_velocity
+
+
+        # U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, gamma = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, m) 
+
         diatoms.save_total_mass()
-        # Pack data into dictionary structure before saving 
-        data = {'U': U, 'C': C, 'Q2': Q2, 
-                'Q2L': Q2L, 'rho': rho, 'L': L,
-                'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-                'N_BV': N_BV, 'algae': algae, 'biomass': sum(algae),
-                'net_growth' : gamma}
-        saved_profiles.save_profile_at_timestep(m, t[m], **data)
+        if m%isave == 0:
+            diatoms.save_total_mass()
+            # Pack data into dictionary structure before saving 
+        #  # , 
+        #             'Q2L': Q2L, 'rho': rho, 'L': L,
+        #             'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
+        #             'N_BV': N_BV, 'algae': algae, 'biomass': sum(algae),
+        #             'net_growth' : gamma
+            data = {'U': velocity['U'], 'C': scalars['C'], 'Q2': turbulence['Q2']}
+            saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
-print(time.time()  - t1) 
+print(time.time()  - time0) 
 
 #***************************************************************************
 # saved_profiles.plot_profiles('Kz', skip=4)
-# f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO, show=False)
+f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO, show=True)
 # plt.close()
 # f0.savefig('output/U-%s.png' % RUN_INFO)
 
-if plot:
-    if diatoms.net:
-        f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=False)
-        f0.savefig('output/varying_growth/netgrowth-%s.png' % RUN_INFO)
+if diatoms.net:
+    f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=True)
 
+f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=True)
+# a0.set_ylim(4000-10,4000+10)
+# f0.savefig('output/diurnal_light/biomass-%s_growth2e-6.png' % RUN_INFO)
 
-    f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
-    f0.savefig('output/varying_growth/biomass-%s.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=True)
+# f0.savefig('output/diurnal_light/algae-%s_px2e-6.png' % RUN_INFO)
 
-    f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
-    f0.savefig('output/varying_growth/algae-%s.png' % RUN_INFO)
-# f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=True)
-
-if output:
-    result= saved_profiles.does_biomass_increase()
-
-    lib.save_output(output_csv, Px0, diatoms.ws, result, header=["pressure", "ws", "output"])
 
 # # saved_profiles.plot_profiles('C', skip=2)
 
