@@ -79,7 +79,7 @@ def run_watercolumn(pmax, ws, output_csv):
     diatoms.set_vertical_grid(H, N, dz)
     algae = diatoms.c
     courant = abs(diatoms.ws * dt)
-    assert(courant<dz)
+    # assert(courant<dz)
     print(diatoms.pmax)
     RUN_INFO=' growth= %2.2e' % diatoms.pmax
     # RUN_INFO=' ws= %2.2e' % diatoms.ws

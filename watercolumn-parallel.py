@@ -16,7 +16,7 @@ if __name__ == '__main__':
     points = 50
     # pressure=np.logspace(1e-7,1e-1, num=points)
     pmax=np.linspace(0.0005,1, num=points)
-    ws = np.logspace(-1e-7, 1e-7, num=points)
+    ws = np.linspace(-1e-7, 1e-7, num=points)
 
     output_csv = "ws_vs_pmax_px2.2e-6.csv"
     # output_csv = "pressure_vs_ws_pmax0.05.csv"
