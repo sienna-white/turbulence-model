@@ -92,6 +92,19 @@ class SavedProfiles:
         self.saved_profiles['time'][profile_num] = time
         for key, value in kwargs.items():
             self.saved_profiles[key][:,profile_num] = value
+        self.profile_num = profile_num
+
+    def output_final_to_csv(self, csv_name):
+        df = pd.DataFrame() 
+        for key in self.saved_profiles.keys():
+            print(key)
+            if key=="time":
+                continue
+            df[key] = self.saved_profiles[key][:,self.profile_num]
+        print(csv_name)
+        df.to_csv(csv_name)
+            
+
 
     def plot_biomass(self, passed_string='', show=True):
 

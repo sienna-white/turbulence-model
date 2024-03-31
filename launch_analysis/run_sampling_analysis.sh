@@ -5,7 +5,7 @@
 #SBATCH -q regular
 #SBATCH --ntasks-per-node=64
 #SBATCH -J pmax_v_ws
-#SBATCH -t 00:35:00
+#SBATCH -t 00:20:00
 #SBATCH 
 
 ##### SBATCH -account m1266

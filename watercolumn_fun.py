@@ -80,7 +80,7 @@ def run_watercolumn(ws, Px0, output_csv):
     algae = diatoms.c
     courant = abs(diatoms.ws * dt)
     # assert(courant<dz)
-    print(diatoms.pmax)
+
     RUN_INFO=' growth= %2.2e' % diatoms.pmax
     # RUN_INFO=' ws= %2.2e' % diatoms.ws
 
@@ -481,14 +481,7 @@ def run_watercolumn(ws, Px0, output_csv):
 
     if output:
         epsilon = 1e-3
-        change = diatoms.total_mass[0] - diatoms.total_mass[-1]
-        if change > epsilon:
-            save_at_end(False)
-            return 
-        elif change < epsilon:
-            save_at_end(True)
-            return 
-        if abs(change) < epsilon: 
-            save_at_end(np.nan)
-            return
+        change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
+        save_at_end(change)
+
 

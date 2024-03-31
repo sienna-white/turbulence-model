@@ -70,7 +70,7 @@ def run_watercolumn(pmax, ws, output_csv):
     init = 200 
 
     # Pressure Forcing -> Need to modify to allow for time variable Px.
-    Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+    Px0 = 2e-5 # 2e-6  # Magnitude on pressure gradient forcing
     T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 
@@ -80,7 +80,7 @@ def run_watercolumn(pmax, ws, output_csv):
     algae = diatoms.c
     courant = abs(diatoms.ws * dt)
     # assert(courant<dz)
-    print(diatoms.pmax)
+    # print(diatoms.pmax)
     RUN_INFO=' growth= %2.2e' % diatoms.pmax
     # RUN_INFO=' ws= %2.2e' % diatoms.ws
 
@@ -477,11 +477,13 @@ def run_watercolumn(pmax, ws, output_csv):
                     'net_growth' : gamma}
             saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
+    print("Total time:")
     print(time.time()  - t1) 
 
     if output:
         epsilon = 1e-3
         change = diatoms.total_mass[0] - diatoms.total_mass[-1]
+        print("start =  %f; end = %f" % (diatoms.total_mass[0], diatoms.total_mass[-1]))
         if change > epsilon:
             save_at_end(False)
             return 

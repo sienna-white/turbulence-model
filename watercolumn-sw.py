@@ -24,6 +24,8 @@ import watercolumn_lib as lib
 from phytoplankton import Algae_Species
 import time
 import sys
+import os 
+import pandas as pd 
 
 t1 = time.time()  # Time our simluation 
 
@@ -49,13 +51,13 @@ dt = 10 #60   # (seconds) size of time step
 M  =  1440*3*6 # 400  # number of time steps 
 
 read_from_input=False
-plot=False
+plot=True
 output=True
 
 
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 1
+isave = 100
 
 # Algae parameters 
 background_turbidity =  0.16
@@ -79,8 +81,9 @@ init = 200
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
 Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
-T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
+RUN_INFO='pressure=%2.2e_pmax=%2.2e_TIDAL' % (Px0, diatoms.pmax)
 
 # This section only executes if the script is passed arguments from the command line
 if len(sys.argv) > 1:
@@ -109,14 +112,14 @@ if len(sys.argv) > 1:
 
 
 
-diatoms.set_initial_concentration(N, init=init, opt='linear')
+diatoms.set_initial_concentration(N, init=init, opt='constant')
 diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 algae = diatoms.c
 courant = abs(diatoms.ws * dt)
 assert(courant<dz)
 print(diatoms.pmax)
-RUN_INFO=' growth= %2.2e' % diatoms.pmax
+
 # RUN_INFO=' ws= %2.2e' % diatoms.ws
 
 
@@ -194,6 +197,7 @@ z = np.array(z)
 empty_arrays = [np.zeros(N) for i in range(5)]
 C, rho, N_BV, U, V = empty_arrays
 
+
 #***************************************************************************
 #   Initialize temperature / strafication profile 
 #***************************************************************************
@@ -240,6 +244,22 @@ Sh = calculate_sh(Gh)
 nu_t = (Sm * Q * L) + nu    # Turbulent diffusivity for Q2
 Kq = (Sq * Q * L) + nu      # Turbulent viscosity
 Kz = (Sh * Q * L) + nu
+
+# Initialize based on initial condition
+csv_name='./initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
+if os.path.isfile(csv_name):
+    print("Using initial condition from %s" % csv_name)
+    ic = pd.read_csv(csv_name)
+    Q2 = ic['Q2'].values
+    Q2L = ic['Q2L'].values
+    rho = ic['rho'].values
+    L = ic['L'].values
+    nu_t = ic['nu_t'].values
+    Kz = ic['Kz'].values
+    Kq = ic['Kq'].values
+    N_BV = ic['N_BV'].values
+    U = ic['U'].values 
+    
 
 # Intialize an object for saving profiles throughout the model run
 n_profiles = int(M/isave)
@@ -344,7 +364,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     #***************************************************************************
     ws    = diatoms.ws 
     wsdtdz  = abs(ws*dt)/dz
-    light =  350 # lib.diurnal_light(time, 350)
+    light =  350 #lib.diurnal_light(time, 350)
     gamma = diatoms.get_loss_and_growth(I_in = light, current_concentration = Ap)
 
     # If settling speed is UPWARD (swimming!)
@@ -519,29 +539,36 @@ for m in range(1,M):
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
 print(time.time()  - t1) 
+# saved_profiles.output_final_to_csv("initial_condition-%s.csv" % RUN_INFO)
 
 #***************************************************************************
-# saved_profiles.plot_profiles('Kz', skip=4)
-# f0, a0 = saved_profiles.plot_profiles('U', skip=2, passed_string=RUN_INFO, show=False)
-# plt.close()
-# f0.savefig('output/U-%s.png' % RUN_INFO)
 
+plot = True
 if plot:
     if diatoms.net:
         f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=False)
-        f0.savefig('output/varying_growth/netgrowth-%s.png' % RUN_INFO)
+        f0.savefig('output/growth/netgrowth-%s.png' % RUN_INFO)
 
+
+    f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
+    f0.savefig('output/growth/Kz-%s.png' % RUN_INFO)
+
+    f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
+    f0.savefig('output/growth/U-%s.png' % RUN_INFO)
 
     f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
-    f0.savefig('output/varying_growth/biomass-%s.png' % RUN_INFO)
+    f0.savefig('output/growth/biomass-%s.png' % RUN_INFO)
 
     f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
-    f0.savefig('output/varying_growth/algae-%s.png' % RUN_INFO)
-# f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=True)
+    f0.savefig('output/growth/algae-%s.png' % RUN_INFO)
 
-if output:
-    result= saved_profiles.does_biomass_increase()
-    save_at_end(result)
+
+
+
+
+# if output:
+#     result= saved_profiles.does_biomass_increase()
+#     save_at_end(result)
 
     
 
