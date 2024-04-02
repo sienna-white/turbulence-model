@@ -543,6 +543,9 @@ print(time.time()  - t1)
 
 #***************************************************************************
 
+print(U)
+print(np.mean(U))
+
 plot = True
 if plot:
     if diatoms.net:

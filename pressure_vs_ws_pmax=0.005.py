@@ -1,7 +1,6 @@
 
 import dask 
 from dask.distributed import Client, LocalCluster
-# from watercolumn_fun import run_watercolumn
 import numpy as np 
 
 
@@ -32,8 +31,6 @@ from phytoplankton import Algae_Species
 import time
 import sys
 
-
-
 def run_watercolumn(ws, Px0, output_csv):
 
     t1 = time.time()  # Time our simluation 
@@ -59,7 +56,6 @@ def run_watercolumn(ws, Px0, output_csv):
     # Algae parameters 
     background_turbidity =  0.16
     I_in = 350 
-
     '''
 
     Diatoms ws = -1.38e-5 m/s
@@ -67,7 +63,7 @@ def run_watercolumn(ws, Px0, output_csv):
     '''
     # Show --> ws=1e-7
     diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                    pmax = 0.02,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                    pmax = 0.005, #0.05,     # maximum specific growth rate [1/hour]
                     ws = ws, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
@@ -418,14 +414,12 @@ def run_watercolumn(ws, Px0, output_csv):
         #***************************************************************************
         #   Advance Q2 * L 
         #***************************************************************************
-        diss = 2*dt*((Q2p[1:top]**0.5) / (B1*Lp[1:top]))*(1+E2*(Lp[1:top]/(kappa*abs(-H-z[1:top])))**2 \
-                                                        + E3*(Lp[1:top]/(kappa*abs(z[1:top])))**2)
+        diss = 2*dt*((Q2p[1:top]**0.5) / (B1*Lp[1:top]))*(1+E2*(Lp[1:top]/(kappa*abs(-H-z[1:top])))**2                                                         + E3*(Lp[1:top]/(kappa*abs(z[1:top])))**2)
 
         aQ2L[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[0:top-1])
         bQ2L[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss
         cQ2L[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1]) 
-        dQ2L[1:top] = Q2Lp[1:top] + 0.25*beta*nu_tp[1:top]*E1*Lp[1:top] * (Up[2:top+1]-Up[0:top-1])**2 \
-                                    - 2*dt*Lp[1:top]*E1*Kzp[1:top]*(N_BVp[1:top]**2)
+        dQ2L[1:top] = Q2Lp[1:top] + 0.25*beta*nu_tp[1:top]*E1*Lp[1:top] * (Up[2:top+1]-Up[0:top-1])**2                                     - 2*dt*Lp[1:top]*E1*Kzp[1:top]*(N_BVp[1:top]**2)
 
         # Bottom boundary Condition
         q2lbot = B1**(2/3) * (ustar**2) * kappa * zb
@@ -436,8 +430,7 @@ def run_watercolumn(ws, Px0, output_csv):
         dQ2L[0] = Q2Lp[0] + dt*((ustar**4)/nu_tp[0])*E1*Lp[0] - dt*Lp[0]*E1*Kzp[0]*(N_BVp[0]**2) + bdryterm
 
         # Top boundary condition
-        dissipation =  2 * dt *(Q2p[top]**0.5)/(B1*Lp[top])*(1+E2*(Lp[top]/(kappa*abs(-H-z[top])))**2 \
-                                                    + E3*(Lp[top]/(kappa*abs(z[top])))**2)
+        dissipation =  2 * dt *(Q2p[top]**0.5)/(B1*Lp[top])*(1+E2*(Lp[top]/(kappa*abs(-H-z[top])))**2                                                     + E3*(Lp[top]/(kappa*abs(z[top])))**2)
         aQ2L[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
         bQ2L[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kqp[top-1]) + dissipation # Are we using kq or kqp here?
         dQ2L[top] = Q2Lp[top] + 0.25*beta*nu_tp[top]*E1*Lp[top]*(Up[top]-Up[top-1])**2 - 2*dt*Lp[-1]*E1*Kzp[top]*(N_BVp[top]**2)
@@ -509,8 +502,7 @@ if __name__ == '__main__':
     # pmax=np.linspace(0.0005,1, num=points)
     ws = np.linspace(-1e-4, 1e-4, num=points)
 
-    # output_csv = "ws_vs_pmax_px2.2e-5.csv"
-    output_csv = "./output/pressure_vs_ws_pmax=0.02.csv"
+    output_csv = "./output/pressure_vs_ws_pmax=0.005.csv"
 
     print("There are %d tasks" % len(ws)) 
 
@@ -523,3 +515,4 @@ if __name__ == '__main__':
     results = dask.compute(tasks)
 
     cluster.close()
+

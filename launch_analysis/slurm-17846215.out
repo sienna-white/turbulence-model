@@ -1,0 +1,102 @@
+running python
+There are 25 tasks
+Traceback (most recent call last):
+  File "/global/scratch/users/siennaw/turbulence/turbulence-model/./ws_vs_pmax_pressure=2.2e-6.csv.py", line 514, in <module>
+    tasks.append(dask.delayed(run_watercolumn)(ws0, pmax0, output_csv))
+NameError: name 'pmax0' is not defined. Did you mean: 'pmax'?
+2024-04-02 11:57:12,167 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:42378 remote=tcp://127.0.0.1:40145>: Stream is closed
+2024-04-02 11:57:12,175 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:42376 remote=tcp://127.0.0.1:40145>: Stream is closed
+2024-04-02 11:57:12,182 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:42404 remote=tcp://127.0.0.1:40145>: Stream is closed
+2024-04-02 11:57:12,186 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:42382 remote=tcp://127.0.0.1:40145>: Stream is closed

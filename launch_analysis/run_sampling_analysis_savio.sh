@@ -1,7 +1,25 @@
+#!/bin/sh
+#BATCH --job-name=run_analysis
+#SBATCH --partition=savio3 
+##SBATCH --qos=aiolos_savio3_normal 
+#SBATCH --account=co_aiolos
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=32
+#### // SBATCH --cpus-per-task=20
+#SBATCH --time=00:35:59
+
+
+# module load PrgEnv-gnu
+module load python
+cd .. 
+
+tag="ws_vs_pmax_pressure=2.2e-7.csv"
+output_csv="./output/${tag}.csv"
+
+cat << EOF > ./${tag}.py
 
 import dask 
 from dask.distributed import Client, LocalCluster
-# from watercolumn_fun import run_watercolumn
 import numpy as np 
 
 
@@ -32,15 +50,13 @@ from phytoplankton import Algae_Species
 import time
 import sys
 
-
-
-def run_watercolumn(ws, Px0, output_csv):
+def run_watercolumn(ws, pmax, output_csv):
 
     t1 = time.time()  # Time our simluation 
-    print("Running simulation w/ ws = %e and Px0 = %e" % (ws, Px0))
+    # print("Running simulation w/ ws = %e and Px0 = %e" % (ws, Px0))
 
-    def save_at_end(depth_av_u,result):
-        lib.save_output(output_csv, depth_av_u, ws, result, header=["depth_averaged_u", "ws", "output"])
+    def save_at_end(ws, pmax, result):
+        lib.save_output(output_csv, ws, pmax, result, header=["ws", "pmax", "output"])
 
     # Spatial Parameters 
     N = 80    # number of grid points
@@ -59,7 +75,6 @@ def run_watercolumn(ws, Px0, output_csv):
     # Algae parameters 
     background_turbidity =  0.16
     I_in = 350 
-
     '''
 
     Diatoms ws = -1.38e-5 m/s
@@ -67,7 +82,7 @@ def run_watercolumn(ws, Px0, output_csv):
     '''
     # Show --> ws=1e-7
     diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                    pmax = 0.02,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                    pmax = pmax,     # maximum specific growth rate [1/hour]
                     ws = ws, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
@@ -77,8 +92,8 @@ def run_watercolumn(ws, Px0, output_csv):
     init = 200 
 
     # Pressure Forcing -> Need to modify to allow for time variable Px.
-    # Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
-    T_Px = 0 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+    Px0 = 2e-7        # Magnitude on pressure gradient forcing
+    T_Px = 0 # 12.0     # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 
     diatoms.set_initial_concentration(N, init=init, opt='linear')
@@ -490,7 +505,7 @@ def run_watercolumn(ws, Px0, output_csv):
         epsilon = 1e-3
         change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
         depth_av_u = np.mean(U)
-        save_at_end(depth_av_u, change)
+        save_at_end(ws, pmax, change)
 
 
 
@@ -503,23 +518,30 @@ if __name__ == '__main__':
     c = Client(cluster)
     tasks = []
 
+    
     # Set range for the two variables of interest 
     points = 25
-    pressure=np.linspace(2e-8,2e-1, num=points)
-    # pmax=np.linspace(0.0005,1, num=points)
+    # pressure=np.linspace(2e-8,2e-1, num=points)
+    pmax=np.linspace(0.0005,1, num=points)
     ws = np.linspace(-1e-4, 1e-4, num=points)
 
-    # output_csv = "ws_vs_pmax_px2.2e-5.csv"
-    output_csv = "./output/pressure_vs_ws_pmax=0.02.csv"
+    output_csv = "${output_csv}"
 
     print("There are %d tasks" % len(ws)) 
 
-    for p0 in pressure:
+    for pmax0 in pmax:
         for ws0 in ws:
-            tasks.append(dask.delayed(run_watercolumn)(ws0, p0, output_csv))
+            # tasks.append(dask.delayed(run_watercolumn)(ws0, p0, output_csv))
 
-            # tasks.append(dask.delayed(run_watercolumn)(p0, ws0, output_csv))
+            tasks.append(dask.delayed(run_watercolumn)(ws0, pmax0, output_csv))
 
     results = dask.compute(tasks)
 
     cluster.close()
+
+EOF
+
+echo "running python" 
+python ./${tag}.py
+
+rm ${tag}.py

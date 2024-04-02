@@ -1,0 +1,816 @@
+running python
+56.42108941078186
+55.9538037776947
+56.32136249542236
+56.39055252075195
+56.38891005516052
+55.95992040634155
+57.02546548843384
+56.358335971832275
+56.32642960548401
+56.62743067741394
+56.42665195465088
+56.541821241378784
+56.76017665863037
+56.50629234313965
+57.04468321800232
+56.9480185508728
+56.5221734046936
+55.89869213104248
+53.48327612876892
+53.87992548942566
+54.45815896987915
+53.59140062332153
+53.3158483505249
+53.71942901611328
+54.17128229141235
+54.76614165306091
+54.287161350250244
+53.95792031288147
+54.259857177734375
+53.67376732826233
+53.63142204284668
+53.8398859500885
+53.740797996520996
+53.97399163246155
+54.00650644302368
+53.802685499191284
+54.40292429924011
+54.094242572784424
+51.438560009002686
+56.08776116371155
+56.20467972755432
+56.59789538383484
+55.790085554122925
+56.40100574493408
+55.914095640182495
+56.34055185317993
+56.046714544296265
+56.35439205169678
+55.4837646484375
+56.015536308288574
+55.884490966796875
+56.21963334083557
+55.96982789039612
+56.58584904670715
+56.07352948188782
+55.89973330497742
+56.07873725891113
+52.838768005371094
+2024-04-02 14:28:17,889 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:46356 remote=tcp://127.0.0.1:35358>: Stream is closed
+54.44457983970642
+54.5455858707428
+54.32647395133972
+54.6455762386322
+55.03782773017883
+54.52442169189453
+54.64998722076416
+54.41438937187195
+54.620505809783936
+54.73536229133606
+54.784011363983154
+54.16502904891968
+54.426685094833374
+54.155372619628906
+54.52080273628235
+54.55633306503296
+54.33170247077942
+54.58327102661133
+54.24587678909302
+54.05818200111389
+54.19438076019287
+53.87335681915283
+53.61430811882019
+54.390740633010864
+54.155089378356934
+54.02398467063904
+53.90004277229309
+54.032360792160034
+54.095977783203125
+53.749292850494385
+54.24116897583008
+54.63753962516785
+54.22620129585266
+54.30065441131592
+54.58203673362732
+54.29661178588867
+54.35370898246765
+54.07358479499817
+50.03520154953003
+54.80703687667847
+54.57969284057617
+54.13435077667236
+53.979872941970825
+54.25151968002319
+53.64755439758301
+54.241774797439575
+54.35339593887329
+53.524378299713135
+53.87343645095825
+54.08693480491638
+54.52666163444519
+54.20271849632263
+53.730162620544434
+53.605002880096436
+53.56459355354309
+54.07963013648987
+53.83129668235779
+54.52905058860779
+50.96161770820618
+55.72767686843872
+55.163841247558594
+55.54814386367798
+54.7315731048584
+55.1602897644043
+55.872440814971924
+55.7521812915802
+55.56043982505798
+55.58013963699341
+55.6846227645874
+55.80549955368042
+55.60095691680908
+55.12362217903137
+55.86766004562378
+56.044838666915894
+55.86660289764404
+55.67895245552063
+55.54248332977295
+54.03017807006836
+54.22343325614929
+53.948779821395874
+53.406229972839355
+53.54937481880188
+53.06131911277771
+53.5206515789032
+53.13866424560547
+53.96759605407715
+53.3495397567749
+53.68276619911194
+53.22625184059143
+53.5922474861145
+53.450671911239624
+53.329604387283325
+53.937703132629395
+53.5762939453125
+53.799113035202026
+53.556211709976196
+53.74057149887085
+51.491132736206055
+54.518542528152466
+54.01259660720825
+54.15578651428223
+54.10207724571228
+54.29912757873535
+54.75027298927307
+54.467511892318726
+53.99266195297241
+53.853371381759644
+54.528143882751465
+53.95772123336792
+54.52142381668091
+54.67185091972351
+54.26342558860779
+54.146655559539795
+54.62410831451416
+54.735756158828735
+54.46804404258728
+53.74009466171265
+55.675312757492065
+56.03063201904297
+55.10621356964111
+54.73448586463928
+55.139779567718506
+54.873451232910156
+54.50997471809387
+55.003392696380615
+54.3304922580719
+54.63839149475098
+54.90689659118652
+54.74046540260315
+54.89483118057251
+54.56957697868347
+55.0406608581543
+54.52353620529175
+54.48752307891846
+55.0811812877655
+54.14374351501465
+53.87932777404785
+53.538018226623535
+53.91312551498413
+54.170342445373535
+53.86812710762024
+54.56707239151001
+55.01511859893799
+53.99021935462952
+54.34063386917114
+53.907838344573975
+53.600481033325195
+53.82051348686218
+54.18813729286194
+54.091846227645874
+54.40541172027588
+54.74231004714966
+54.17064905166626
+54.306878089904785
+53.46691846847534
+51.473689556121826
+53.932045459747314
+54.61745595932007
+54.18707513809204
+54.31261491775513
+54.546305656433105
+54.30169081687927
+53.85799217224121
+53.48123359680176
+53.358354330062866
+53.07274413108826
+53.60166645050049
+52.67882800102234
+53.35297894477844
+53.279014110565186
+53.09636974334717
+53.0061719417572
+53.280670404434204
+52.784130334854126
+53.01795196533203
+50.94927740097046
+54.1608943939209
+54.408665895462036
+54.30122351646423
+53.60403847694397
+54.110249757766724
+54.12082529067993
+54.45404648780823
+54.34969925880432
+54.08384108543396
+54.50952363014221
+54.178382873535156
+54.1522319316864
+54.07189607620239
+54.36649465560913
+54.442089796066284
+54.35880422592163
+54.63136601448059
+54.6772403717041
+54.295605421066284
+50.672359466552734
+54.080156326293945
+54.53548288345337
+54.234174728393555
+53.70415210723877
+53.836090326309204
+54.335124492645264
+54.287697553634644
+53.87705135345459
+54.02453637123108
+54.52656412124634
+53.89674973487854
+54.275707483291626
+54.14571928977966
+54.10309863090515
+54.02010750770569
+54.13380455970764
+53.82856822013855
+53.57186007499695
+54.064305543899536
+51.028868436813354
+53.740293979644775
+53.43976926803589
+53.16674041748047
+52.97497320175171
+53.63875603675842
+53.61507225036621
+53.43232583999634
+53.10473918914795
+53.206934690475464
+53.750399351119995
+53.90864300727844
+53.31591725349426
+53.57466650009155
+53.05073070526123
+53.29055571556091
+53.58470010757446
+53.41119408607483
+53.826833963394165
+53.8561954498291
+50.58954429626465
+53.26983070373535
+53.965243339538574
+53.26204013824463
+53.217703342437744
+53.15329384803772
+53.74188446998596
+54.282063722610474
+53.60265874862671
+53.38078951835632
+53.51990222930908
+53.39684271812439
+54.1801381111145
+53.68527436256409
+53.64482760429382
+54.370177030563354
+53.717853307724
+53.56488585472107
+54.179731607437134
+54.27170944213867
+50.757896423339844
+54.70576786994934
+54.70084619522095
+54.361780881881714
+54.43729543685913
+55.17398524284363
+54.8456494808197
+55.25049948692322
+54.887068033218384
+54.891788482666016
+54.73614835739136
+55.082059144973755
+55.11049795150757
+54.71827745437622
+54.46369791030884
+54.543644428253174
+54.76663613319397
+54.68179488182068
+55.307164907455444
+53.87537121772766
+57.55157542228699
+57.330002546310425
+57.414655923843384
+57.12178874015808
+57.30972480773926
+57.62948560714722
+57.29177284240723
+57.56719136238098
+57.357141733169556
+57.94484996795654
+57.28180193901062
+57.412739753723145
+57.89852857589722
+57.314910650253296
+57.655137062072754
+56.91104793548584
+57.2703971862793
+56.79161715507507
+54.13043427467346
+54.15464520454407
+53.57842707633972
+54.01512408256531
+54.39038348197937
+54.20245099067688
+54.757123947143555
+54.07765817642212
+54.35437321662903
+55.07736873626709
+54.144774198532104
+54.741828203201294
+54.42987632751465
+54.52595496177673
+54.03776025772095
+54.73486948013306
+54.41431641578674
+54.75298190116882
+54.24934458732605
+54.81359148025513
+55.04675078392029
+54.74818658828735
+54.39645290374756
+54.625330686569214
+54.43260431289673
+54.88131141662598
+54.825135469436646
+54.22024369239807
+54.27458477020264
+54.741974115371704
+54.895936250686646
+55.0266547203064
+54.429715633392334
+54.50924897193909
+54.38784837722778
+54.19947290420532
+54.50539255142212
+54.384788513183594
+54.04094576835632
+54.58454632759094
+53.42952823638916
+53.86443018913269
+53.89992117881775
+54.15273475646973
+53.780109882354736
+54.16602182388306
+53.203126668930054
+54.26722478866577
+53.34817051887512
+53.77558445930481
+53.57277011871338
+53.14139437675476
+53.587538957595825
+53.51690149307251
+53.347485065460205
+53.617040157318115
+54.56423735618591
+51.73225498199463
+53.41556167602539
+53.10459780693054
+52.35192275047302
+53.15845060348511
+53.60597848892212
+53.64460229873657
+54.023059368133545
+53.89469790458679
+53.094228982925415
+53.65902376174927
+53.967700242996216
+53.229228019714355
+53.91206407546997
+53.16651129722595
+53.071813106536865
+53.42683696746826
+54.119261264801025
+53.19154191017151
+53.686371088027954
+49.56895923614502
+54.77664852142334
+55.40589737892151
+54.49236750602722
+54.414989709854126
+54.91237831115723
+54.44774556159973
+54.39207100868225
+54.46073007583618
+54.51968741416931
+54.69807004928589
+55.01235485076904
+53.84713268280029
+54.444117307662964
+54.227197885513306
+53.94909906387329
+54.119744062423706
+54.02524662017822
+55.002665519714355
+54.66757369041443
+54.54638338088989
+54.73194670677185
+54.72591471672058
+54.92320799827576
+54.902984857559204
+55.26018667221069
+55.354573249816895
+54.58527493476868
+54.555861949920654
+54.76772093772888
+55.00598645210266
+54.966137647628784
+55.054945945739746
+54.179771900177
+54.633283376693726
+54.73806190490723
+55.22429037094116
+55.19626045227051
+53.99326705932617
+54.45651412010193
+54.50810265541077
+53.79413962364197
+54.13553071022034
+54.34003973007202
+53.842291593551636
+53.70434045791626
+53.769049882888794
+53.522642850875854
+53.89846873283386
+54.08894157409668
+53.73931622505188
+54.243067026138306
+54.045886278152466
+53.61541938781738
+53.50344252586365
+53.971925497055054
+53.92851257324219
+54.34066200256348
+50.202311277389526
+2024-04-02 14:28:17,898 - distributed.worker - WARNING - Heartbeat to scheduler failed
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/worker.py", line 1161, in heartbeat
+    response = await retry_operation(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 383, in retry_operation
+    return await retry(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils_comm.py", line 368, in retry
+    return await coro()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 1153, in send_recv_from_rpc
+    return await send_recv(comm=comm, op=key, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/core.py", line 918, in send_recv
+    response = await comm.read(deserializers=deserializers)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) ConnectionPool.heartbeat_worker local=tcp://127.0.0.1:46380 remote=tcp://127.0.0.1:35358>: Stream is closed
+55.03238272666931
+54.499593019485474
+53.551204681396484
+53.57234215736389
+53.939547061920166
+53.54129886627197
+53.72180104255676
+54.13083291053772
+53.905988454818726
+54.41143345832825
+53.66698241233826
+53.95767140388489
+53.84195423126221
+54.0844931602478
+53.972707748413086
+53.504501819610596
+53.94367837905884
+53.48796105384827
+54.10687589645386
+49.09722280502319
+55.66110801696777
+55.630162954330444
+54.73760199546814
+54.43244528770447
+55.40887999534607
+54.7708261013031
+54.62668490409851
+54.712119340896606
+54.61815690994263
+55.0251989364624
+55.01413369178772
+54.36029529571533
+54.97855567932129
+54.42947864532471
+54.87672209739685
+55.45099973678589
+55.09580373764038
+55.635438442230225
+54.017481088638306
+54.75941801071167
+54.88468098640442
+53.7369065284729
+53.83162760734558
+53.898258447647095
+53.98001956939697
+54.29212927818298
+54.18622660636902
+54.364325284957886
+53.91347146034241
+54.23677206039429
+53.648226499557495
+54.28046131134033
+53.85017418861389
+54.05276036262512
+53.79196882247925
+54.41319394111633
+53.97194814682007
+54.25906586647034
+50.73437762260437
+54.94735407829285
+55.025365114212036
+54.43669152259827
+54.175163984298706
+54.647621631622314
+54.42309617996216
+54.808942556381226
+53.89941143989563
+54.507211685180664
+54.920857429504395
+54.28655195236206
+54.116106033325195
+54.772968769073486
+54.06545376777649
+54.38459801673889
+54.71347236633301
+54.2217493057251
+54.30690860748291
+54.50164818763733
+54.76710820198059
+54.436811447143555
+54.09986901283264
+53.95596408843994
+54.7575740814209
+54.80915856361389
+54.42421102523804
+54.320762395858765
+54.01893854141235
+54.20276641845703
+53.655720949172974
+53.63549304008484
+54.45509624481201
+54.93602013587952
+54.12318801879883
+54.090006828308105
+54.413429260253906
+54.09255361557007
+54.34806227684021
+50.54896020889282
+54.40811777114868
+54.29930400848389
+54.15232872962952
+53.79368805885315
+53.96900963783264
+54.22693729400635
+54.79816246032715
+54.45925951004028
+54.06910181045532
+54.16779112815857
+54.15713882446289
+54.618927001953125
+54.19011998176575
+54.293389558792114
+54.233144760131836
+54.19062924385071
+54.35173439979553
+54.38383913040161
+54.16815233230591
+50.803425550460815
+54.81930232048035
+54.54355525970459
+53.43777775764465
+53.79036235809326
+54.00851893424988
+54.13892841339111
+54.231165647506714
+54.249938011169434
+53.707335233688354
+53.69385528564453
+53.89941740036011
+54.08360528945923
+53.73469829559326
+53.41866183280945
+53.67116713523865
+53.47124981880188
+54.04087948799133
+54.16764688491821
+54.501664876937866
+48.81270670890808
+There are 25 tasks
+2024-04-02 14:28:18,488 - distributed.client - ERROR - cannot schedule new futures after shutdown
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1392, in _handle_report
+    msgs = await self.scheduler_comm.comm.read()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) Client->Scheduler local=tcp://127.0.0.1:46414 remote=tcp://127.0.0.1:35358>: Stream is closed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils.py", line 778, in wrapper
+    return await func(*args, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1211, in _reconnect
+    await self._ensure_connected(timeout=timeout)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1241, in _ensure_connected
+    comm = await connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/core.py", line 291, in connect
+    comm = await asyncio.wait_for(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/tasks.py", line 445, in wait_for
+    return fut.result()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 449, in connect
+    stream = await self.client.connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/tornado/tcpclient.py", line 265, in connect
+    addrinfo = await self.resolver.resolve(host, port, af)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 434, in resolve
+    for fam, _, _, _, address in await asyncio.get_running_loop().getaddrinfo(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 863, in getaddrinfo
+    return await self.run_in_executor(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 821, in run_in_executor
+    executor.submit(func, *args), loop=self)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/concurrent/futures/thread.py", line 167, in submit
+    raise RuntimeError('cannot schedule new futures after shutdown')
+RuntimeError: cannot schedule new futures after shutdown
+cannot schedule new futures after shutdown
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1392, in _handle_report
+    msgs = await self.scheduler_comm.comm.read()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) Client->Scheduler local=tcp://127.0.0.1:46414 remote=tcp://127.0.0.1:35358>: Stream is closed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils.py", line 778, in wrapper
+    return await func(*args, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1400, in _handle_report
+    await self._reconnect()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils.py", line 778, in wrapper
+    return await func(*args, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1211, in _reconnect
+    await self._ensure_connected(timeout=timeout)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1241, in _ensure_connected
+    comm = await connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/core.py", line 291, in connect
+    comm = await asyncio.wait_for(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/tasks.py", line 445, in wait_for
+    return fut.result()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 449, in connect
+    stream = await self.client.connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/tornado/tcpclient.py", line 265, in connect
+    addrinfo = await self.resolver.resolve(host, port, af)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 434, in resolve
+    for fam, _, _, _, address in await asyncio.get_running_loop().getaddrinfo(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 863, in getaddrinfo
+    return await self.run_in_executor(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 821, in run_in_executor
+    executor.submit(func, *args), loop=self)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/concurrent/futures/thread.py", line 167, in submit
+    raise RuntimeError('cannot schedule new futures after shutdown')
+RuntimeError: cannot schedule new futures after shutdown
+2024-04-02 14:28:18,495 - distributed.client - ERROR - cannot schedule new futures after shutdown
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 223, in read
+    frames_nbytes = await stream.read_bytes(fmt_size)
+tornado.iostream.StreamClosedError: Stream is closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1392, in _handle_report
+    msgs = await self.scheduler_comm.comm.read()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 239, in read
+    convert_stream_closed_error(self, e)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 144, in convert_stream_closed_error
+    raise CommClosedError(f"in {obj}: {exc}") from exc
+distributed.comm.core.CommClosedError: in <TCP (closed) Client->Scheduler local=tcp://127.0.0.1:46414 remote=tcp://127.0.0.1:35358>: Stream is closed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1520, in _close
+    await asyncio.wait_for(asyncio.shield(handle_report_task), 0.1)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/tasks.py", line 445, in wait_for
+    return fut.result()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils.py", line 778, in wrapper
+    return await func(*args, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1400, in _handle_report
+    await self._reconnect()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/utils.py", line 778, in wrapper
+    return await func(*args, **kwargs)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1211, in _reconnect
+    await self._ensure_connected(timeout=timeout)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/client.py", line 1241, in _ensure_connected
+    comm = await connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/core.py", line 291, in connect
+    comm = await asyncio.wait_for(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/tasks.py", line 445, in wait_for
+    return fut.result()
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 449, in connect
+    stream = await self.client.connect(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/tornado/tcpclient.py", line 265, in connect
+    addrinfo = await self.resolver.resolve(host, port, af)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/site-packages/distributed/comm/tcp.py", line 434, in resolve
+    for fam, _, _, _, address in await asyncio.get_running_loop().getaddrinfo(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 863, in getaddrinfo
+    return await self.run_in_executor(
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/asyncio/base_events.py", line 821, in run_in_executor
+    executor.submit(func, *args), loop=self)
+  File "/global/software/sl-7.x86_64/modules/langs/python/3.10/lib/python3.10/concurrent/futures/thread.py", line 167, in submit
+    raise RuntimeError('cannot schedule new futures after shutdown')
+RuntimeError: cannot schedule new futures after shutdown

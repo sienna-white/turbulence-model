@@ -1,7 +1,25 @@
+#!/bin/sh
+#BATCH --job-name=run_analysis
+#SBATCH --partition=savio3 
+##SBATCH --qos=aiolos_savio3_normal 
+#SBATCH --account=co_aiolos
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=32
+#### // SBATCH --cpus-per-task=20
+#SBATCH --time=00:35:59
+
+
+# module load PrgEnv-gnu
+module load python
+cd .. 
+
+tag="pressure_vs_ws_pmax=0.02TEST"
+output_csv="./output/${tag}.csv"
+
+cat << EOF > ./${tag}.py
 
 import dask 
 from dask.distributed import Client, LocalCluster
-# from watercolumn_fun import run_watercolumn
 import numpy as np 
 
 
@@ -32,14 +50,13 @@ from phytoplankton import Algae_Species
 import time
 import sys
 
-
-
 def run_watercolumn(ws, Px0, output_csv):
 
     t1 = time.time()  # Time our simluation 
     print("Running simulation w/ ws = %e and Px0 = %e" % (ws, Px0))
 
     def save_at_end(depth_av_u,result):
+        print("Depth averaged velocity = %f" % depth_av_u)
         lib.save_output(output_csv, depth_av_u, ws, result, header=["depth_averaged_u", "ws", "output"])
 
     # Spatial Parameters 
@@ -59,7 +76,6 @@ def run_watercolumn(ws, Px0, output_csv):
     # Algae parameters 
     background_turbidity =  0.16
     I_in = 350 
-
     '''
 
     Diatoms ws = -1.38e-5 m/s
@@ -67,7 +83,7 @@ def run_watercolumn(ws, Px0, output_csv):
     '''
     # Show --> ws=1e-7
     diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                    pmax = 0.02,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                    pmax = 0.01, #0.05,     # maximum specific growth rate [1/hour]
                     ws = ws, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
@@ -487,10 +503,12 @@ def run_watercolumn(ws, Px0, output_csv):
     print(time.time()  - t1) 
 
     if output:
-        epsilon = 1e-3
         change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
         depth_av_u = np.mean(U)
+        print("Depth averaged U = ")
+        print(depth_av_u)
         save_at_end(depth_av_u, change)
+
 
 
 
@@ -505,17 +523,18 @@ if __name__ == '__main__':
 
     # Set range for the two variables of interest 
     points = 25
-    pressure=np.linspace(2e-8,2e-1, num=points)
+    pressure=np.linspace(2e-8,2e-3, num=points)
     # pmax=np.linspace(0.0005,1, num=points)
     ws = np.linspace(-1e-4, 1e-4, num=points)
 
-    # output_csv = "ws_vs_pmax_px2.2e-5.csv"
-    output_csv = "./output/pressure_vs_ws_pmax=0.02.csv"
+    output_csv = "${output_csv}"
 
     print("There are %d tasks" % len(ws)) 
 
     for p0 in pressure:
+
         for ws0 in ws:
+            print("Pressure = %f, ws = %f" % (p0, ws0))
             tasks.append(dask.delayed(run_watercolumn)(ws0, p0, output_csv))
 
             # tasks.append(dask.delayed(run_watercolumn)(p0, ws0, output_csv))
@@ -523,3 +542,10 @@ if __name__ == '__main__':
     results = dask.compute(tasks)
 
     cluster.close()
+
+EOF
+
+echo "running python" 
+python ./${tag}.py
+
+rm ${tag}.py
