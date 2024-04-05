@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np 
 
 fn="ws_vs_pmax_pressure=2.2e-5"
-title = "Comparing $w_s$ to pmax (pressure=2.2e-5)"
-csv = "../output/%s.csv" % fn 
+title = "Comparing $w_s$ to pmax (pressure=2.2e-4)"
+csv = "../output/%s.csv.csv" % fn 
 data = pd.read_csv(csv)
 
 
@@ -42,23 +42,15 @@ output = data.output
 
 i = plt.scatter(data.ws, data.pmax, c=output, marker= "s", 
                 cmap = mpl.cm.seismic, vmin=0, vmax=2, s=90)
-# plt.plot(true.pressure, true.ws, "s", color="skyblue", label= "Growing", markersize=9)
-# plt.plot(false.pressure, false.ws, "s", color="crimson", label= "Dying", markersize=9)
 
 ax = plt.gca() 
 ax.set_xlabel("$w_s$")
 ax.set_ylabel("pmax")
-# ax.set_xscale('log')
-# plt.hlines(0, xmax = max(data.pmax), xmin=min(data.pmax))
-# ax.set_title("Comparing pressure to growth rate  (pmax=0.03)")
 
 
 ax.set_title(title)
 plt.ticklabel_format(style='sci', axis='y', scilimits=(-1,1))
 plt.ticklabel_format(style='sci', axis='x', scilimits=(-1,1))
-
-
-
 
 cbar = plt.colorbar(i, shrink = 0.9, orientation="vertical" )#, label = units)
 # cbar.set_label(units)

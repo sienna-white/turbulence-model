@@ -75,12 +75,13 @@ class Algae_Species:
         pi = self.pmax * I/(self.Hi + I)
         return pi 
     
-    def get_light_intensity(self, I_in):
+    def get_light_intensity(self, I_in, other_species=None):
         background_turbidity =  0.26
-        if self.self_shading:
+        if other_species is None:
+            I, photic_depth = self_shading([self, other_species], I_in=I_in, turbidity=background_turbidity, self_shading=True)
+        else: 
             I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity, self_shading=True)
-        else:
-            I, photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity, self_shading=False)
+
         return I, photic_depth # photic_depth = self_shading([self], I_in=I_in, turbidity=background_turbidity)
     
     def get_loss_and_growth(self, I_in, current_concentration):
@@ -88,8 +89,8 @@ class Algae_Species:
         n time step'''
         if self.net:
             self.c = current_concentration
-            I, photic_depth = self.get_light_intensity(I_in)
-            growth = self.monod_growth_rate(I) 
+            # I, photic_depth = self.get_light_intensity(I_in)
+            growth = self.monod_growth_rate(I_in) 
             loss = self.Li
             net  = growth - loss
         else:
@@ -109,6 +110,7 @@ class Algae_Species:
     
 def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
     ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
+
     z  = ListofAlgae[0].z
     dz = ListofAlgae[0].dz
     N = ListofAlgae[0].N

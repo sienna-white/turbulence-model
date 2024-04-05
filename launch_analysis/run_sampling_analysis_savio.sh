@@ -13,7 +13,7 @@
 module load python
 cd .. 
 
-tag="ws_vs_pmax_pressure=2.2e-7.csv"
+tag="ws_vs_pmax_pressure=2.2e-7"
 output_csv="./output/${tag}.csv"
 
 cat << EOF > ./${tag}.py

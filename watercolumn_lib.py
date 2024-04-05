@@ -38,15 +38,36 @@ variable2units['algae'] = r'10$^6$ cells/m$^2$'
 variable2units['biomass'] = r'10$^6$ cells'
 variable2units['net_growth'] = r'hour$^{-1}$'
 
-def diurnal_light(t, I_max):
+def check_initial_condition(Px0):
+    csv_name='./initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
+    if os.path.isfile(csv_name):
+        print("Using initial condition from %s" % csv_name)
+        ic = pd.read_csv(csv_name)
+        Q2 = ic['Q2'].values
+        Q2L = ic['Q2L'].values
+        rho = ic['rho'].values
+        L = ic['L'].values
+        nu_t = ic['nu_t'].values
+        Kz = ic['Kz'].values
+        Kq = ic['Kq'].values
+        N_BV = ic['N_BV'].values
+        U = ic['U'].values 
+        return Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U
+    else: 
+        raise("No initial condition for this pressure gradient --> comment out this line!")
+
+def diurnal_light(t, I_max, diurnal):
     '''Function to generate estimate of light according to diurnal cycle.
      Inputs: t (in seconds); I_max (maximum light intensity/ light at noon)'''
-    hour = t/3600
-    period = (2*np.pi)/24
-    phase_shift = 12 
-    light = I_max * np.cos(period * (hour - phase_shift))
-    light = light.clip(min=0) # During night, light is zero
-    return light
+    if diurnal:
+        hour = t/3600
+        period = (2*np.pi)/24
+        phase_shift = 12 
+        light = I_max * np.cos(period * (hour - phase_shift))
+        light = light.clip(min=0) # During night, light is zero
+        return light
+    else:
+        return I_max
 
 def initialize_abcd(N):
     a = np.zeros(N)
@@ -196,6 +217,42 @@ def save_output(csv_file, var1, var2, output, header):
     df.to_csv(csv_file, mode=mode, index=False, header=header)
     
 
+def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
+    aA, bA, cA, dA = initialize_abcd(N)
 
+    # If settling speed is UPWARD (swimming!)
+    if ws>0:
+        aA[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
+        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        dA = Ap
 
+        # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
+        cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+
+        # Top-Boundary: no flux for scalars
+        aA[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) # removed + wsdtdz 
+        dA[top] = Ap[top]
+
+    # If settling speed is DOWNWARD (sinking!)
+    if ws<=0:
+        aA2[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
+        bA2[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA2[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        dA2 = Ap2
+
+        # Bottom-Boundary: no flux for scalars
+        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
+        cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
+        dA[0] =  Ap[0]
+
+        # Top-Boundary: no flux for scalars
+        aA[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
+        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz # okay adding this here 
+        dA[top] = Ap[top]
+
+    return aA, bA, cA, dA
 

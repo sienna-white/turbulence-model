@@ -13,7 +13,7 @@
 module load python
 cd .. 
 
-tag="pressure_vs_ws_pmax=0.02TEST"
+tag="pressure_vs_ws_pmax=0.1"
 output_csv="./output/${tag}.csv"
 
 cat << EOF > ./${tag}.py
@@ -83,7 +83,7 @@ def run_watercolumn(ws, Px0, output_csv):
     '''
     # Show --> ws=1e-7
     diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                    pmax = 0.01, #0.05,     # maximum specific growth rate [1/hour]
+                    pmax = 0.1, #0.05,     # maximum specific growth rate [1/hour]
                     ws = ws, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                     Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                     Li = 0.006,      # specific loss rate [1/hour]
@@ -507,9 +507,13 @@ def run_watercolumn(ws, Px0, output_csv):
         depth_av_u = np.mean(U)
         print("Depth averaged U = ")
         print(depth_av_u)
+        # file1 = open("SIENNA.txt","a")
+        # file1.write("\n\n Pressure = %f \n" % Px0)
+        # for u in U:
+        #     file1.write("\t %f \n" % u)
+        # file1.write("depth ave = %2.2e \n\n" % depth_av_u)
+        # file1.close()
         save_at_end(depth_av_u, change)
-
-
 
 
 
@@ -522,8 +526,8 @@ if __name__ == '__main__':
     tasks = []
 
     # Set range for the two variables of interest 
-    points = 25
-    pressure=np.linspace(2e-8,2e-3, num=points)
+    points = 35
+    pressure=np.linspace(2e-7,1e-5, num=points)
     # pmax=np.linspace(0.0005,1, num=points)
     ws = np.linspace(-1e-4, 1e-4, num=points)
 
