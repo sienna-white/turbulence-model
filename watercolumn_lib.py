@@ -22,6 +22,12 @@ variable2name['algae'] = r'Algae concentration'
 variable2name['biomass'] = r'Total algae biomass'
 variable2name['net_growth'] = r'Net Algae Growth (loss + growth)'
 
+variable2name['algae1'] = r'Algae concentration'
+variable2name['biomass1'] = r'Total algae biomass'
+variable2name['net_growth1'] = r'Net Algae Growth (loss + growth)'
+variable2name['algae2'] = r'Algae concentration'
+variable2name['biomass2'] = r'Total algae biomass'
+variable2name['net_growth2'] = r'Net Algae Growth (loss + growth)'
 
 variable2units = {}
 variable2units['U'] = 'm/s'
@@ -127,20 +133,88 @@ class SavedProfiles:
             
 
 
-    def plot_biomass(self, passed_string='', show=True):
+
+    
+
+    def plot_concentration(self, ListOfSpecies, ListOfKeys, passed_string='', skip=1, show=True):
+
+
+        def seconds2hours(seconds):
+            return seconds/3600
+    
+        fig, axs = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True, figsize = (15, 5))
+                                   
+        # fig, ax = plt.figure(figsize=(8,4)), plt.gca()
+        plots = np.arange(0, self.n_profiles, skip)
+        if len(plots)>10: 
+            legend_ind = np.floor(len(plots)/10)
+        else:
+            legend_ind = 1
+
+        def get_color(k, i):
+            if k==0:
+                return mpl.cm.viridis(i/len(plots))
+            if k==1:
+                return mpl.cm.plasma(i/len(plots))
+            
+        ls = '-'
+
+        for k, key in enumerate(ListOfKeys):
+            for i, ind in enumerate(plots):
+                if i == 0: #self.saved_profiles['time'][ind] == 0
+                        axs[k].plot(self.saved_profiles[key][:,ind], 
+                        self.z, '--',
+                        color = 'k',
+                        linewidth = 2, 
+                        label='Initial condition %s' % ListOfSpecies[k].name)
+                else:
+                    if i%legend_ind==0: 
+                        axs[k].plot(self.saved_profiles[key][:,ind], 
+                                self.z, ls,
+                                color = get_color(k, i),
+                                linewidth = 2.5, 
+                                alpha = 0.6,
+                                label='t = %1.1f hrs' % (seconds2hours(self.saved_profiles['time'][ind])))
+                    else:
+                        axs[k].plot(self.saved_profiles[key][:,ind], 
+                                self.z, ls,
+                                color = get_color(k, i),
+                                linewidth = 2.5, 
+                                alpha = 0.6)
+
+            leg = axs[k].legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
+            axs[k].grid(alpha = 0.5)
+            axs[k].set_ylabel('Depth (m)')
+            axs[k].set_xlabel('%s (%s)' % (variable2name['algae'], variable2units['algae']))
+            axs[k].set_title("%s" %  ListOfSpecies[k].name + passed_string)
+            add_text(fig, axs[k], leg, ListOfSpecies[k])
+
+        plt.tight_layout()
+
+        if show:
+            plt.show()
+        return fig, axs
+
+
+    def plot_biomass(self, ListOfSpecies, ListOfKeys, passed_string='', show=True):
 
         def seconds2hours(seconds):
             return seconds/3600
         
         fig, ax = plt.figure(figsize=(8,4)), plt.gca()
-        biomass = [self.saved_profiles['biomass'][0,i] for i in range(self.n_profiles)]
-        
-        ax.plot(self.saved_profiles['time'][0:len(biomass)], biomass,
-                '-o', color = 'k', markersize = 5)
+
+        for i, key in enumerate(ListOfKeys):
+
+            species = ListOfSpecies[i]
+            biomass = [self.saved_profiles[key][0,i] for i in range(self.n_profiles)]
+            label = "Biomass of %s" % species.name 
+            ax.plot(self.saved_profiles['time'][0:len(biomass)], biomass,
+                    '-o', markersize = 5, label = label)
 
         ax.grid(alpha = 0.5)
         ax.set_ylabel('Algal biomass (%s)' % variable2units["biomass"])
         ax.set_xlabel('Time (s)')
+        ax.legend()
         ax.set_title(variable2name["biomass"] + passed_string)
         plt.tight_layout()
         if show:
@@ -189,13 +263,20 @@ class SavedProfiles:
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
         ax.grid(alpha = 0.5)
         ax.set_ylabel('Depth (m)')
-        ax.set_xlabel('%s (%s)' % (variable2name[variable], variable2units[variable]))
+        # ax.set_xlabel('%s (%s)' % (variable2name[variable], variable2units[variable]))
         # ax.hlines(0, color = 'k', linestyle = '--')
         ax.set_title(variable2name[variable] + passed_string)
         plt.tight_layout()
         if show:
             plt.show()
         return fig, ax  
+
+
+def add_text(fig, ax, leg, species):
+    text = "Algal Species : %s \n pmax = %2.2e \n ws = %2.2e" % (species.name, species.pmax, species.ws)
+    # ax.text(0.6, 0.1, text, transform=ax.transAxes)
+    ax.text(1.05, 0.05, text, transform=ax.transAxes)
+
 
 
 def save_output(csv_file, var1, var2, output, header):
@@ -239,10 +320,10 @@ def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
 
     # If settling speed is DOWNWARD (sinking!)
     if ws<=0:
-        aA2[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
-        bA2[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA2[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-        dA2 = Ap2
+        aA[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
+        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
+        cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
+        dA = Ap
 
         # Bottom-Boundary: no flux for scalars
         bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
@@ -256,3 +337,26 @@ def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
 
     return aA, bA, cA, dA
 
+
+
+
+def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt):
+
+    aU, bU, cU, dU = initialize_abcd(N)
+
+    aU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[0:top-1])
+    bU[1:top] = 1 + beta/2*(nu_tp[2:top+1] + 2*nu_tp[1:top] + nu_tp[0:top-1])
+    cU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[2:top+1])
+    dU[1:top] = Up[1:top] - dt*Px[1:top]
+
+    # Bottom boundary: log-law
+    bU[0] = 1 + beta/2*(nu_tp[1] + nu_tp[0] + 2*(math.sqrt(C_D)/kappa)*nu_tp[0])
+    cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
+    dU[0] = Up[0] - dt*Px[0]
+
+    # Top boundary: no stress
+    aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
+    bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
+    dU[top] = Up[top] - dt*Px[top]
+
+    return aU, bU, cU, dU

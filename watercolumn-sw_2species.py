@@ -49,31 +49,29 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  =  10 #1440*3*6 # 400  # number of time steps 
+M  = 1440*18*2 # 400  # number of time steps 
 
 read_from_input=False
 plot=True
 output=True
 
 
-
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 100
+isave = 300 #200 #00
 
 # Algae parameters 
 background_turbidity =  0.16
 I_in = 350 
 
 '''
-
 Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
 '''
 # Show --> ws=1e-7
 
-Algae2 = Algae_Species(k = 0.034, 
-                    pmax = 0.008,
-                    ws = 1.4e-4,
+Algae2 = Algae_Species(k = 0.0034, 
+                    pmax = 0.05, #08,
+                    ws = 1.4e-8,
                     Hi = 40,
                     Li = 0.004,
                     name = "HAB",
@@ -82,21 +80,20 @@ Algae2 = Algae_Species(k = 0.034,
 
 Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                 pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+                ws = -1.4e-6, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                 Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                 Li = 0.006,      # specific loss rate [1/hour]
                 name = "Diatoms",
-                self_shading=False,
+                self_shading=True,
                 net=True)
 
-init = 200 
+init = 20 #25 #50 #200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = 2e-4 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-RUN_INFO='pressure=%2.2e_pmax=%2.2e_TIDAL' % (Px0, Algae1.pmax)
-
+RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, Algae1.pmax)
 
 ########################################################################################## 
 
@@ -108,12 +105,14 @@ Algae2.set_initial_concentration(N, init=init, opt='constant')
 Algae2.save_total_mass()
 Algae2.set_vertical_grid(H, N, dz)
 
+
 algae1 = Algae1.c
 algae2 = Algae2.c
+
 ##########################################################################################
 
 
-# RUN_INFO=' ws= %2.2e' % diatoms.ws
+RUN_INFO='px=%2.2e_a1ws=%2.2e_a1pmax=%2.2e_a2ws=2.2%e_a2pmax=%2.2e' % (Px0, Algae1.ws, Algae1.pmax, Algae2.ws, Algae2.pmax)
 
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
@@ -254,7 +253,8 @@ saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)
 data = {'U': U, 'C': C, 'Q2': Q2, 
         'Q2L': Q2L, 'rho': rho, 'L': L,
         'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-        'N_BV': N_BV, 'algae1': Algae1.c, 'algae2' : Algae2.c, 'biomass1': sum(Algae1.c), 'net_growth1': Algae1.c*0}
+        'N_BV': N_BV, 'algae1': Algae1.c, 'algae2' : Algae2.c, 'biomass1': sum(Algae1.c), 
+        'biomass2':  sum(Algae2.c), 'net_growth1': Algae1.c*0, 'net_growth2' : Algae2.c*0}
 saved_profiles.save_profile_at_timestep(0, 0, **data)
 
 # Store z in our object so we can plot the profiles later 
@@ -313,7 +313,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     nu_t = (Sm * Q * L) + nu # Turbulent diffusivity for Q2
     Kq = (Sq * Q * L) + nu   # Turbulent viscosity
     Kz = (Sh * Q * L) + nu
-    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never = zero 
+    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never zero 
 
     #***************************************************************************
     #   Store last time's step variables (f --> fp, q2 --> q2p, etc)
@@ -329,21 +329,10 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
-    aU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[0:top-1])
-    bU[1:top] = 1 + beta/2*(nu_tp[2:top+1] + 2*nu_tp[1:top] + nu_tp[0:top-1])
-    cU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[2:top+1])
-    dU[1:top] = Up[1:top] - dt*Px[1:top]
 
-    # Bottom boundary: log-law
-    bU[0] = 1 + beta/2*(nu_tp[1] + nu_tp[0] + 2*(math.sqrt(C_D)/kappa)*nu_tp[0])
-    cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
-    dU[0] = Up[0] - dt*Px[0]
-
-    # Top boundary: no stress
-    aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
-    bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top]
-
+    # Moved function itself into watercolumn_lib.py
+    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt)
+    
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
 
@@ -351,7 +340,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #********************** LIGHT FOR THIS TIME STEP ***************************
     #***************************************************************************
     light =  lib.diurnal_light(time, 350, diurnal=True)
-    background_turbidity = 0.16
+    background_turbidity = 0.0 #16
     light, photic_depth = self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
     #***************************************************************************
     
@@ -360,41 +349,10 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #***************************************************************************
     ws    = Algae1.ws 
     wsdtdz  = abs(ws*dt)/dz
-    gamma= Algae1.get_loss_and_growth(I_in = light, current_concentration = Ap1)
 
-    # If settling speed is UPWARD (swimming!)
-    if ws>0:
-        aA1[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-        bA1[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA1[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-        dA1 = Ap1
+    gamma1 = Algae1.get_loss_and_growth(I_in = light, current_concentration = Ap1)
 
-        # Bottom-Boundary: no flux for scalars
-        bA1[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
-        cA1[0] = -beta/2 * (Kzp[1] + Kzp[0])
-        dA1[0] =  Ap1[0]
-
-        # Top-Boundary: no flux for scalars
-        aA1[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-        bA1[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) # removed + wsdtdz 
-        dA1[top] = Ap1[top]
-
-    # If settling speed is DOWNWARD (sinking!)
-    if ws<=0:
-        aA1[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
-        bA1[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA1[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-        dA1 = Ap1
-
-        # Bottom-Boundary: no flux for scalars
-        bA1[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
-        cA1[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
-        dA1[0] =  Ap1[0]
-
-        # Top-Boundary: no flux for scalars
-        aA1[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
-        bA1[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz # okay adding this here 
-        dA1[top] = Ap1[top]
+    aA1, bA1, cA1, dA1 = lib.advance_algae(ws, wsdtdz, gamma1, beta, Kzp, Ap1, N, top, dt)
 
     # Thomas algorithm to solve for C
     algae1 = lib.TDMA(aA1, bA1, cA1, dA1, N)  
@@ -403,46 +361,9 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #***************************************************************************
     #   ADVANCE SECOND ALGAL SPECIES
     #***************************************************************************
-    # ws    = algae2.ws 
-    # wsdtdz  = abs(ws*dt)/dz
-    # gamma = diatoms.get_loss_and_growth(I_in = light, current_concentration = Ap2)
-
-    # # If settling speed is UPWARD (swimming!)
-    # if ws>0:
-    #     aA2[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-    #     bA2[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-    #     cA2[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-    #     dA2 = Ap2
-
-    #     # Bottom-Boundary: no flux for scalars
-    #     bA2[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
-    #     cA2[0] = -beta/2 * (Kzp[1] + Kzp[0])
-    #     dA2[0] =  Ap2[0]
-
-    #     # Top-Boundary: no flux for scalars
-    #     aA2[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-    #     bA2[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) # removed + wsdtdz 
-    #     dA2[top] = Ap2[top]
-
-    # # If settling speed is DOWNWARD (sinking!)
-    # if ws<=0:
-    #     aA2[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
-    #     bA2[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-    #     cA2[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-    #     dA2 = Ap2
-
-    #     # Bottom-Boundary: no flux for scalars
-    #     bA2[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
-    #     cA2[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
-    #     dA2[0] =  Ap2[0]
-
-    #     # Top-Boundary: no flux for scalars
-    #     aA2[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
-    #     bA2[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz # okay adding this here 
-    #     dA2[top] = Ap2[top]
-
     ws    = Algae2.ws 
     wsdtdz  = abs(ws*dt)/dz
+
     gamma2 = Algae2.get_loss_and_growth(I_in = light, current_concentration = Ap2)
     
     aA2, bA2, cA2, dA2 = lib.advance_algae(ws, wsdtdz, gamma2, beta, Kzp, Ap2, N, top, dt)
@@ -556,7 +477,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma, gamma2]
+    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma1, gamma2]
 
 
 #***************************************************************************
@@ -567,25 +488,22 @@ for m in range(1,M):
     # if m%200 == 0:
     #     print('Time step = %d' % m)
 
-    # Uses BGO/Mellor-Yamada 2-equation closure
-    # print("START OF LOOP-- ALGAE MASS IS %2.2f" % sum(algae))
-
+    # Advance the model by one timestep
     output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, m) 
 
-    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma, gamma2 = output
+    # Unpack output
+    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma1, gamma2 = output
 
-
-    # diatoms.save_total_mass()
     if m%isave == 0:
-        Algae1.save_total_mass()
-        Algae2.save_total_mass()
+        # Algae1.save_total_mass()
+        # Algae2.save_total_mass()
         # Pack data into dictionary structure before saving 
         data = {'U': U, 'C': C, 'Q2': Q2, 
                 'Q2L': Q2L, 'rho': rho, 'L': L,
                 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-                'N_BV': N_BV, 'diatoms': algae1, 'hab': algae2,
+                'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
                 'biomass1': sum(algae1), 'biomass2' : sum(algae2),
-                'net_growth1': gamme1, 'net_growth2' : gamma2}
+                'net_growth1': gamma1, 'net_growth2' : gamma2}
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
 print(time.time()  - t1) 
@@ -593,25 +511,29 @@ print(time.time()  - t1)
 
 #***************************************************************************
 
-print(U)
-print(np.mean(U))
 
-
-f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=False)
-f0.savefig('figures/two_species/netgrowth-%s.png' % RUN_INFO)
-
-
-f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
-f0.savefig('figures/two_species/Kz-%s.png' % RUN_INFO)
-
-f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
-f0.savefig('figures/two_species/U-%s.png' % RUN_INFO)
-
-f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
+f0, a0 = saved_profiles.plot_biomass([Algae1, Algae2], ['biomass1', 'biomass2'], passed_string='', show=True)
 f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
-f0.savefig('figures/two_species/algae-%s.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['algae1', 'algae2'], passed_string='', skip=4, show=True)
+f0.savefig('figures/two_species/concentration-%s.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['net_growth1', 'net_growth2'], passed_string='', skip=4, show=True)
+f0.savefig('figures/two_species/growth_rate-%s.png' % RUN_INFO)
+
+assert(False)
+f0, a0 = saved_profiles.plot_profiles('net_growth2', skip=4, passed_string=RUN_INFO, show=True)
+
+f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
+# f0.savefig('figures/two_species/Kz-%s.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
+# f0.savefig('figures/two_species/U-%s.png' % RUN_INFO)
+
+# f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_profiles('algae1', skip=4, passed_string=RUN_INFO, show=False)
+# f0.savefig('figures/two_species/algae-%s.png' % RUN_INFO)
 
 
 
