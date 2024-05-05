@@ -48,7 +48,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  =  1440*3*6 # 400  # number of time steps 
+M  =  2000 #1440*3*6 # 400  # number of time steps 
 
 read_from_input=False
 plot=True
@@ -57,7 +57,7 @@ output=True
 
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 100
+isave = 1
 
 # Algae parameters 
 background_turbidity =  0.16
@@ -86,7 +86,7 @@ diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [c
                 Li = 0.006,      # specific loss rate [1/hour]
                 name = "Diatoms",
                 self_shading=False,
-                net=True)
+                net=False)
 
 init = 200 
 
@@ -107,7 +107,7 @@ hab.set_initial_concentration(N, init=init, opt='constant')
 hab.save_total_mass()
 hab.set_vertical_grid(H, N, dz)
 
-algae1 = diatoms.c
+algae = diatoms.c
 algae2 = hab.c
 ##########################################################################################
 
@@ -239,21 +239,21 @@ Kz = (Sh * Q * L) + nu
 ##########################################################################################
 
 # Initialize based on initial condition
-Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition()
+Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
 
 ##########################################################################################   
 
 # Intialize an object for saving profiles throughout the model run
 n_profiles = int(M/isave)
 variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV',
-                    'algae1', 'algae2', 'biomass1', 'biomass2', 'net_growth1', 'net_growth2']
+                    'algae', 'biomass', 'net_growth']
 saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
 
 # Save initial condition (first profile at time zero)
 data = {'U': U, 'C': C, 'Q2': Q2, 
         'Q2L': Q2L, 'rho': rho, 'L': L,
         'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-        'N_BV': N_BV, 'algae1': algae1, 'algae2' : algae2, 'biomass': sum(algae), 'net_growth0': algae*0}
+        'N_BV': N_BV, 'algae': algae, 'biomass': sum(algae), 'net_growth': algae*0}
 saved_profiles.save_profile_at_timestep(0, 0, **data)
 
 # Store z in our object so we can plot the profiles later 
@@ -335,9 +335,13 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     dU[0] = Up[0] - dt*Px[0]
 
     # Top boundary: no stress
+    # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
+    # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
+    # dU[top] = Up[top] - dt*Px[top]
+    W = 0.2
     aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
     bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top]
+    dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
 
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
@@ -536,17 +540,17 @@ if plot:
         f0.savefig('output/growth/netgrowth-%s.png' % RUN_INFO)
 
 
-    f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
-    f0.savefig('output/growth/Kz-%s.png' % RUN_INFO)
+    f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=RUN_INFO, show=False)
+    # f0.savefig('output/growth/Kz-%s.png' % RUN_INFO)
 
-    f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
-    f0.savefig('output/growth/U-%s.png' % RUN_INFO)
+    f0, a0 = saved_profiles.plot_profiles('U', skip=5, passed_string=RUN_INFO, show=True)
+    # f0.savefig('output/growth/U-%s.png' % RUN_INFO)
 
-    f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
-    f0.savefig('output/growth/biomass-%s.png' % RUN_INFO)
+    # f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
+    # f0.savefig('output/growth/biomass-%s.png' % RUN_INFO)
 
-    f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
-    f0.savefig('output/growth/algae-%s.png' % RUN_INFO)
+    # f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
+    # f0.savefig('output/growth/algae-%s.png' % RUN_INFO)
 
 
 

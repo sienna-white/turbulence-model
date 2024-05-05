@@ -71,7 +71,7 @@ Cyanobacteria = 1.38e-4 m/s
 
 Algae2 = Algae_Species(k = 0.0034, 
                     pmax = 0.05, #08,
-                    ws = 1.4e-8,
+                    ws = 1.4e-5,
                     Hi = 40,
                     Li = 0.004,
                     name = "HAB",
@@ -87,13 +87,16 @@ Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm
                 self_shading=True,
                 net=True)
 
-init = 20 #25 #50 #200 
+init = 5 # 20 #25 #50 #200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
 Px0 = 2e-4 # 2e-6  # Magnitude on pressure gradient forcing
-T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+T_Px = 12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, Algae1.pmax)
+W = 0.0
+# RUN_INFO='pressure=%2.2e_pmax=%2.2e_W=%f' % (Px0, Algae1.pmax, W)
+RUN_INFO='NOTIDESpx=%1.2e_a1ws=%1.2e_a1pmax=%1.2e_a2ws=1.2%e_a2pmax=%1.2e_W=%1.1f' % (Px0, Algae1.ws, Algae1.pmax, Algae2.ws, Algae2.pmax, W)
+
 
 ########################################################################################## 
 
@@ -112,7 +115,6 @@ algae2 = Algae2.c
 ##########################################################################################
 
 
-RUN_INFO='px=%2.2e_a1ws=%2.2e_a1pmax=%2.2e_a2ws=2.2%e_a2pmax=%2.2e' % (Px0, Algae1.ws, Algae1.pmax, Algae2.ws, Algae2.pmax)
 
 # Initial conditions for temperature profile
 delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
@@ -248,6 +250,10 @@ n_profiles = int(M/isave)
 variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV',
                     'algae1', 'algae2', 'biomass1', 'biomass2', 'net_growth1', 'net_growth2']
 saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
+saved_profiles.Px0 = Px0
+saved_profiles.T_Px = T_Px
+saved_profiles.I_in = I_in
+
 
 # Save initial condition (first profile at time zero)
 data = {'U': U, 'C': C, 'Q2': Q2, 
@@ -259,6 +265,7 @@ saved_profiles.save_profile_at_timestep(0, 0, **data)
 
 # Store z in our object so we can plot the profiles later 
 saved_profiles.store_z(z)
+
 
 def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
 
@@ -294,7 +301,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     if T_Px == 0.0:
         Px = Px + Px0 # Steady and constant forcing for now
     else: 
-        Px = Px + Px0*math.cos(2*math.pi*t[m]/(3600*T_Px))
+        Px = Px + Px0*math.cos((2*math.pi*t[m] - 3600*3)/(3600*T_Px)) 
 
     # Update shear velocity at bottom boundary. Note explicit dependence on C_D
     ustar = abs(U[0])*math.sqrt(C_D); 
@@ -331,15 +338,14 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #***************************************************************************
 
     # Moved function itself into watercolumn_lib.py
-    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt)
+    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W)
     
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
 
-  
     #********************** LIGHT FOR THIS TIME STEP ***************************
     #***************************************************************************
-    light =  lib.diurnal_light(time, 350, diurnal=True)
+    light =  lib.diurnal_light(t[m], 350, diurnal=True)
     background_turbidity = 0.0 #16
     light, photic_depth = self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
     #***************************************************************************
@@ -512,14 +518,23 @@ print(time.time()  - t1)
 #***************************************************************************
 
 
-f0, a0 = saved_profiles.plot_biomass([Algae1, Algae2], ['biomass1', 'biomass2'], passed_string='', show=True)
-f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=True)
+# f0.savefig('figures/two_species_wind/%s_phasing.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['algae1', 'algae2'], passed_string='', skip=4, show=True)
-f0.savefig('figures/two_species/concentration-%s.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=True)
+# f0.savefig('figures/two_species_wind/%s_U.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['net_growth1', 'net_growth2'], passed_string='', skip=4, show=True)
-f0.savefig('figures/two_species/growth_rate-%s.png' % RUN_INFO)
+
+# f0, a0 = saved_profiles.plot_biomass([Algae1, Algae2], ['biomass1', 'biomass2'], passed_string='', show=True)
+# f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
+
+# f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['algae1', 'algae2'], passed_string='', skip=4, show=True)
+# f0.savefig('figures/two_species/concentration-%s.png' % RUN_INFO)
+
+# f0, a0 = saved_profiles.plot_concentration([Algae1, Algae2], ['net_growth1', 'net_growth2'], passed_string='', skip=4, show=True)
+
+
+
 
 assert(False)
 f0, a0 = saved_profiles.plot_profiles('net_growth2', skip=4, passed_string=RUN_INFO, show=True)

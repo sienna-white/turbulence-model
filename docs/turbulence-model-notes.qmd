@@ -115,7 +115,66 @@ Again, $\nu_t$ is a function $\nu_t(z,t)$ that dissipates energy from the mean v
 
 \section{Discretization}
 
+\subsection{Velocity}
+Our governing equation for flow is given by,
+\begin{equation} \label{eq:0}
+\frac{\partial u}{\partial t} = - \frac{1}{\rho} \frac{\partial p}{\partial z} + \nu_t \frac{\partial^2 u}{\partial z^2}
+\end{equation}
 
+We discretize this equation in time and space. We break down the discretization of Equation \ref{eq:0} by the left hand (unsteadiness) and right hand (pressure + diffusion) sides. The right-hand side is trickiest.  We use an implicit scheme for time and a central difference scheme for space.
+
+$$ 
+ \frac{\partial }{\partial z} \left( \nu_t \frac{\partial u}{\partial z} \right)  \approx \frac{1}{\Delta z} \left( \left(\nu_t \frac{\partial u}{\partial z}\right)_{i + 1/2}  - \left(\nu_t \frac{\partial u}{\partial z}\right)_{i - 1/2} \right)
+$$ 
+evaluating velocity $u$ at $i+1$, $i-1$. Dropping the subscript on $\nu_t$, we rewrite this as 
+$$ 
+=  \frac{1}{\Delta z} \left( \nu_{i + 1/2} \frac{\partial u}{\partial z}_{i + 1}  - \nu_{i - 1/2} \frac{\partial u}{\partial z}_{i - 1} \right)
+$$
+and discretizing the remaining gradients gives us,
+
+$$
+=  \frac{1}{\Delta z^2} \left( \nu_{i + 1/2} \left(u_{i+1} - u_i \right)  - \nu_{i - 1/2} \left( u_{i} - u_{i-1} \right) \right)
+$$
+
+$$
+=  \frac{1}{\Delta z^2} \left( \nu_{i + 1/2} u_{i+1} - (\nu_{i + 1/2} + \nu_{i - 1/2})  u_i + \nu_{i - 1/2} u_{i-1} \right)
+$$
+
+Putting it all together, we get
+\begin{equation}
+\frac{u_i^{n+1} - u_i^{n}}{\Delta t} = -Px_i^n + \frac{1}{\Delta z^2} \left( \nu_{i + 1/2} u_{i+1} - (\nu_{i + 1/2} + \nu_{i - 1/2})  u_i + \nu_{i - 1/2} u_{i-1} \right)
+\end{equation}
+$$ 
+u_i^{n+1} - u_i^{n} = - \Delta t Px_i^n + \frac{\Delta t}{\Delta z^2} \left( \nu_{i + 1/2} u_{i+1} - (\nu_{i + 1/2} + \nu_{i - 1/2})  u_i + \nu_{i - 1/2} u_{i-1} \right)
+$$ 
+Rearrange, grouping terms by time step (past on left, future on the right),
+$$ 
+u_i^{n} -\Delta t Px_i^n   = u_i^{n+1} -  \frac{\Delta t}{\Delta z^2} \left( \nu_{i + 1/2} u_{i+1} - (\nu_{i + 1/2} + \nu_{i - 1/2})  u_i + \nu_{i - 1/2} u_{i-1} \right)   
+$$ 
+
+\subsubsection{Wind stress}
+Consider the partial discretization,
+$$ 
+u_i^{n+1} - u_i^{n} = - \Delta t Px_i^n =  \frac{\Delta t}{\Delta z} \left( \nu_{i + 1/2} \frac{\partial u}{\partial z}_{i + 1}  - \nu_{i - 1/2} \frac{\partial u}{\partial z}_{i - 1} \right)^{n+1}
+$$
+When there is wind stress at the surface, we expect
+$$ \frac{\partial u}{\partial z} = \frac{u_*}{\kappa \Delta z} = \frac{W}{\Delta z}$$ 
+
+$$ 
+u_i^{n+1} - u_i^{n} = - \Delta t Px_i^n + \frac{\Delta t}{\Delta z} \left( \nu_{i + 1/2} W - \nu_{i - 1/2} \frac{\partial u}{\partial z}_{i - 1} \right)^{n+1}
+$$
+
+$$
+\frac{u_i^{n+1} - u_i^{n}}{\Delta t} = -Px_i^n + \frac{1}{\Delta z^2} \left( \nu_{i + 1/2} W  - \nu_{i - 1/2} \left( u_{i} - u_{i-1} \right) \right)
+$$ 
+
+$$
+u_n^{n} - \Delta t Px_i^n  = u_i^{n+1} - \frac{\Delta t}{\Delta z^2} \left( \nu_{i + 1/2} W  - \nu_{i - 1/2} \left( u_{i} - u_{i-1} \right) \right)^{n+1}
+$$ 
+
+$$
+u_N^{n} - \Delta t Px_N^n  = u_i^{n+1} - \frac{\Delta t}{\Delta z^2} \left( \nu_{N + 1/2} W  - \nu_{N - 1/2} u_{i} +  \nu_{N - 1/2}  u_{N-1} \right)^{n+1}
+$$ 
 
 
 \subsection{Advection-Diffusion Equation for Algae}
@@ -129,7 +188,14 @@ where $C$ is the concentration of algae (scalar), $\Gamma$ is the source/loss te
 
 We break down the discretization of Equation \ref{eq:1} by the left hand (time derivative + advection) and right hand (diffusion) sides. The right-hand side is trickiest. 
 
-
+We rewrite our expression as,
+$$ 
+ \frac{\partial }{\partial z} \left( \kappa_t \frac{\partial C}{\partial z} \right)  \approx \frac{1}{\Delta z} \left( \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i + 1/2}  - \left(\kappa_t \frac{\partial C}{\partial z}\right)_{i - 1/2} \right)
+$$ 
+evaluating C at $i+1$, $i-1$ (this is where I will now drop the subscript on $\kappa_t$),
+$$ 
+=  \frac{1}{\Delta z} \left( \kappa_{i + 1/2} \frac{\partial C}{\partial z}_{i + 1}  - \kappa_{i - 1/2} \frac{\partial C}{\partial z}_{i - 1} \right).
+$$
 \subsubsection{Discretizing diffusion}
 We first evaluate the diffusion term in space (neglecting $\Gamma$ for now) using a staggered with with central differencing. Note here that diffusion is given by $\kappa_t$, which respresents turbulent diffusion (a quantity we will solve for in the turbulence closure). Because the subscripts get messy, I'll drop the subscript $t$, but all diffusion in this equation refers to $\kappa_t$. 
 
@@ -171,7 +237,7 @@ Note that this expression (Eq \ref{eq:laplacian}) for diffusion will not change 
 \subsection{Discretizing advection}
 Discretizing is advection is trickier as we employ upwinding that depends on the direction of swimming speed (eg, sinking particles ($w_s<0$) vs. floating particles ($w_s>0$)). Note that the nature of upwinding with the ``algae advection" term changes depending on the sign of $w_s$. This gets confusing very easily (see diagram). 
 
-![Upwinding discretization for plankton advection depends on the direction of $w_s$ (sinking or swimming)](diagrams/4x/upwind.png)
+![Upwinding discretization for plankton advection depends on the direction of $w_s$ (sinking or swimming)](../diagrams/4x/upwind.png)
 
 <!-- ******************************************************************** -->
 \section{Discretizing in time}
@@ -300,7 +366,7 @@ $$  C_{0}  = C_{-1}$$
 Note however that there is no equivalent ``settling" term for floating algae. Instead, mass cannot enter or leave at the bed or the surface. This requires us to address the advective flux at both boundaries. 
 
 
-![Boundary condition for plankton advection depends on the direction of $w_s$ (sinking or swimming)](diagrams/4x/Asset%205sinkvswim.png){height=150}
+![Boundary condition for plankton advection depends on the direction of $w_s$ (sinking or swimming)](../diagrams/4x/Asset%205sinkvswim.png){height=150}
 
 \subsubsection{Zero-flux through the bed ($w_s>0$)}
 Compared to a sinking particle, however, now we must worry about algae advecting from the bed into the water column. We thus cancel out the advective flux coming fron the $-1$ cell at the bed. 

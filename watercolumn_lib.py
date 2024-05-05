@@ -132,55 +132,70 @@ class SavedProfiles:
         df.to_csv(csv_name)
             
 
+    def seconds2hours(self, seconds):
+        return seconds/3600
 
+    def plot_phasing(self, ListOfSpecies, passed_string='', skip=1, show=True):
 
-    
+    #     # first row: biomass 1, biomass 2
+    #     # second row : concentration 1, concentration 2 
+    #     # third row: diurnal light, tidal forcing 
+        fig, axs = plt.subplots(nrows=2, ncols=2, sharex=False, sharey=False, figsize = (18, 10))
+        plot_index, legend_ind = self.get_plot_indices(skip)
+
+        axs = axs.flatten()
+
+        # Add biomass 
+        axs[0].set_title("Biomass over time")
+        label1 = "Biomass of %s" % ListOfSpecies[0].name 
+        label2 = "Biomass of %s" % ListOfSpecies[1].name
+        axs[0] = self.add_time_series_to_axis('biomass1', label1, axs[0])
+        axs[0] = self.add_time_series_to_axis('biomass2', label2, axs[0])
+        axs[0].legend()
+
+        # Add forcings
+        time = self.saved_profiles['time'][0:] 
+        hours = self.seconds2hours(time)
+        diurnal = [diurnal_light(t, self.I_in, True) for t in time]
+        ax2 = axs[1].twinx()
+        axs[1].plot(hours[0:-2], diurnal[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
+        print(hours, diurnal)
+        axs[1].plot([],[], 'o', label='Tidal forcing', alpha = 0.4, linewidth=3, color='skyblue')
+        if self.T_Px != 0:
+            pressure = [self.Px0*math.cos(2*math.pi*t/(3600*self.T_Px)) for t in time]
+            ax2.plot(hours[0:-2], pressure[0:-2], '-o',  alpha = 0.4, label='Tidal forcing', color='skyblue')
+            print(hours, pressure)
+        axs[1].legend()
+        axs[1].grid(alpha = 0.5)
+        axs[1].set_title("Temporal forcings")
+
+        # Add concentrations 
+        axs[2] = self.add_profile_to_axis( 'algae1', plot_index, legend_ind, axs[2])
+        axs[2].set_title("Concentration of %s" % ListOfSpecies[0].name)
+
+        axs[3] = self.add_profile_to_axis( 'algae2', plot_index, legend_ind, axs[3])
+        axs[3].set_title("Concentration of %s" % ListOfSpecies[1].name)
+        axs[3].set_xlim(0, 25)
+        axs[2].set_xlim(0, 25)
+
+        return fig, axs
+
 
     def plot_concentration(self, ListOfSpecies, ListOfKeys, passed_string='', skip=1, show=True):
-
-
-        def seconds2hours(seconds):
-            return seconds/3600
     
         fig, axs = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True, figsize = (15, 5))
-                                   
-        # fig, ax = plt.figure(figsize=(8,4)), plt.gca()
-        plots = np.arange(0, self.n_profiles, skip)
-        if len(plots)>10: 
-            legend_ind = np.floor(len(plots)/10)
-        else:
-            legend_ind = 1
+        plot_ind, legend_ind = self.get_plot_indices(skip)
 
         def get_color(k, i):
             if k==0:
-                return mpl.cm.viridis(i/len(plots))
+                return mpl.cm.viridis(i/len(plot_ind))
             if k==1:
-                return mpl.cm.plasma(i/len(plots))
+                return mpl.cm.plasma(i/len(plot_ind))
             
         ls = '-'
 
         for k, key in enumerate(ListOfKeys):
-            for i, ind in enumerate(plots):
-                if i == 0: #self.saved_profiles['time'][ind] == 0
-                        axs[k].plot(self.saved_profiles[key][:,ind], 
-                        self.z, '--',
-                        color = 'k',
-                        linewidth = 2, 
-                        label='Initial condition %s' % ListOfSpecies[k].name)
-                else:
-                    if i%legend_ind==0: 
-                        axs[k].plot(self.saved_profiles[key][:,ind], 
-                                self.z, ls,
-                                color = get_color(k, i),
-                                linewidth = 2.5, 
-                                alpha = 0.6,
-                                label='t = %1.1f hrs' % (seconds2hours(self.saved_profiles['time'][ind])))
-                    else:
-                        axs[k].plot(self.saved_profiles[key][:,ind], 
-                                self.z, ls,
-                                color = get_color(k, i),
-                                linewidth = 2.5, 
-                                alpha = 0.6)
+            self.add_profile_to_axis(key, plot_ind, legend_ind, axs[k])
 
             leg = axs[k].legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
             axs[k].grid(alpha = 0.5)
@@ -196,6 +211,17 @@ class SavedProfiles:
         return fig, axs
 
 
+    def add_time_series_to_axis(self, variable, label0, ax):
+        series = [self.saved_profiles[variable][0,i] for i in range(self.n_profiles)]
+        time = self.seconds2hours(self.saved_profiles['time'][0:len(series)])
+
+        label = label0 
+        ax.plot(time, series, '-o', markersize = 5, label = label)
+        ax.grid(alpha = 0.5)
+        ax.set_xlabel('Time (hr)')
+        return ax 
+
+
     def plot_biomass(self, ListOfSpecies, ListOfKeys, passed_string='', show=True):
 
         def seconds2hours(seconds):
@@ -204,16 +230,10 @@ class SavedProfiles:
         fig, ax = plt.figure(figsize=(8,4)), plt.gca()
 
         for i, key in enumerate(ListOfKeys):
+            label0 = "Biomass of %s" % ListOfSpecies[i].name 
+            ax = self.add_time_series_to_axis(key, label0, ax)
 
-            species = ListOfSpecies[i]
-            biomass = [self.saved_profiles[key][0,i] for i in range(self.n_profiles)]
-            label = "Biomass of %s" % species.name 
-            ax.plot(self.saved_profiles['time'][0:len(biomass)], biomass,
-                    '-o', markersize = 5, label = label)
-
-        ax.grid(alpha = 0.5)
         ax.set_ylabel('Algal biomass (%s)' % variable2units["biomass"])
-        ax.set_xlabel('Time (s)')
         ax.legend()
         ax.set_title(variable2name["biomass"] + passed_string)
         plt.tight_layout()
@@ -225,21 +245,11 @@ class SavedProfiles:
     def does_biomass_increase(self):
         return sum(self.saved_profiles['algae'][-1]) > sum(self.saved_profiles['algae'][0])
     
-    def plot_profiles(self, variable, skip=1, passed_string='', show=True):
 
-        def seconds2hours(seconds):
-            return seconds/3600
-        
-        fig, ax = plt.figure(figsize=(8,4)), plt.gca()
-        plots = np.arange(0, self.n_profiles, skip)
-        if len(plots)>10: 
-            legend_ind = np.floor(len(plots)/10)
-        else:
-            legend_ind = 1
-
-        ls = '-'
-
-        for i, ind in enumerate(plots):
+    def add_profile_to_axis(self, variable, plot_index, legend_ind, ax):
+        ''' Add a vertical profile given by the key variable to a given axis'''
+        ls  = '-'
+        for i, ind in enumerate(plot_index):
             if self.saved_profiles['time'][ind] == 0:
                  ax.plot(self.saved_profiles[variable][:,ind], 
                     self.z, '--',
@@ -250,21 +260,38 @@ class SavedProfiles:
                 if i%legend_ind==0: 
                     ax.plot(self.saved_profiles[variable][:,ind], 
                             self.z, ls,
-                            color = mpl.cm.viridis(i/len(plots)),
+                            color = mpl.cm.viridis(i/len(plot_index)),
                             linewidth = 2.5, 
                             alpha = 0.6,
-                            label='t = %d hr' % seconds2hours(self.saved_profiles['time'][ind]))
+                            label='t = %2.1f hr' % self.seconds2hours(self.saved_profiles['time'][ind]))
                 else:
                     ax.plot(self.saved_profiles[variable][:,ind], 
                             self.z, ls,
-                            color = mpl.cm.viridis(i/len(plots)),
+                            color = mpl.cm.viridis(i/len(plot_index)),
                             linewidth = 2.5, 
                             alpha = 0.6)
+        
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
         ax.grid(alpha = 0.5)
         ax.set_ylabel('Depth (m)')
-        # ax.set_xlabel('%s (%s)' % (variable2name[variable], variable2units[variable]))
-        # ax.hlines(0, color = 'k', linestyle = '--')
+        return ax 
+    
+    def get_plot_indices(self, skip):
+        plots = np.arange(0, self.n_profiles, skip)
+        if len(plots)>10: 
+            legend_ind = np.floor(len(plots)/10)
+        else:
+            legend_ind = 1
+        return plots, legend_ind
+    
+    def plot_profiles(self, variable, skip=1, passed_string='', show=True):
+        
+        fig, ax = plt.figure(figsize=(8,4)), plt.gca()
+        plot_index, legend_ind = self.get_plot_indices(skip)
+    
+        ls = '-'
+
+        self.add_profile_to_axis(variable, plot_index, legend_ind, ax)
         ax.set_title(variable2name[variable] + passed_string)
         plt.tight_layout()
         if show:
@@ -340,7 +367,7 @@ def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
 
 
 
-def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt):
+def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W):
 
     aU, bU, cU, dU = initialize_abcd(N)
 
@@ -354,9 +381,13 @@ def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt):
     cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
     dU[0] = Up[0] - dt*Px[0]
 
-    # Top boundary: no stress
     aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
     bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top]
+    dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
+
+    # # Top boundary: no stress
+    # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
+    # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
+    # dU[top] = Up[top] - dt*Px[top]
 
     return aU, bU, cU, dU
