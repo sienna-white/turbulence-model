@@ -367,7 +367,7 @@ def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
 
 
 
-def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W):
+def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=None):
 
     aU, bU, cU, dU = initialize_abcd(N)
 
@@ -381,13 +381,13 @@ def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W):
     cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
     dU[0] = Up[0] - dt*Px[0]
 
-    aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
-    bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
-
-    # # Top boundary: no stress
     # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
     # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    # dU[top] = Up[top] - dt*Px[top]
+    # dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
+
+    # Top boundary: no stress
+    aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
+    bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
+    dU[top] = Up[top] - dt*Px[top]
 
     return aU, bU, cU, dU

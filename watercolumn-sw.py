@@ -26,9 +26,9 @@ import time
 import sys
 import os 
 import pandas as pd 
+from phytoplankton import self_shading
 
 t1 = time.time()  # Time our simluation 
-
 
 '''
 Because the indexing is a little confusing in Python vs. Matlab (0 is the bed, N-1 is 
@@ -55,13 +55,14 @@ plot=True
 output=True
 
 
+# Algae parameters 
+background_turbidity = 0.1
+LIGHT =  350 
+DIURNAL = True 
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 1
 
-# Algae parameters 
-background_turbidity =  0.16
-I_in = 350 
 
 '''
 
@@ -94,7 +95,13 @@ init = 200
 Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-RUN_INFO='pressure=%2.2e_pmax=%2.2e_TIDAL' % (Px0, diatoms.pmax)
+RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, diatoms.pmax)
+if T_Px>0:
+    RUN_INFO+="_TIDAL"
+if DIURNAL:
+    RUN_INFO+="_DIURNAL"
+    
+
 
 
 ########################################################################################## 
@@ -324,24 +331,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
-    aU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[0:top-1])
-    bU[1:top] = 1 + beta/2*(nu_tp[2:top+1] + 2*nu_tp[1:top] + nu_tp[0:top-1])
-    cU[1:top] = -beta/2*(nu_tp[1:top] + nu_tp[2:top+1])
-    dU[1:top] = Up[1:top] - dt*Px[1:top]
-
-    # Bottom boundary: log-law
-    bU[0] = 1 + beta/2*(nu_tp[1] + nu_tp[0] + 2*(math.sqrt(C_D)/kappa)*nu_tp[0])
-    cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
-    dU[0] = Up[0] - dt*Px[0]
-
-    # Top boundary: no stress
-    # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
-    # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    # dU[top] = Up[top] - dt*Px[top]
-    W = 0.2
-    aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
-    bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
+    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=None)
 
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
@@ -351,48 +341,14 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     #***************************************************************************
     ws    = diatoms.ws 
     wsdtdz  = abs(ws*dt)/dz
-    light =  350 #lib.diurnal_light(time, 350)
+    light =  lib.diurnal_light(t[m], LIGHT, diurnal=DIURNAL)
+    light, photic_depth = self_shading([diatoms], I_in=light, turbidity=background_turbidity, self_shading=True)
     gamma = diatoms.get_loss_and_growth(I_in = light, current_concentration = Ap)
+    aA, bA, cA, dA = lib.advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt)
 
-    # If settling speed is UPWARD (swimming!)
-    if ws>0:
-        aA[1:top]  = -wsdtdz - beta/2 * (Kzp[0:top-1]+ Kzp[1:top]) 
-        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA[1:top]  = -beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-        dA = Ap
-
-        # Bottom-Boundary: no flux for scalars
-        bA[0] =  1 - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) + wsdtdz
-        cA[0] = -beta/2 * (Kzp[1] + Kzp[0])
-        dA[0] =  Ap[0]
-
-        # Top-Boundary: no flux for scalars
-        aA[top] = -wsdtdz - beta/2 * (Kzp[top] + Kzp[top-1])
-        bA[top] = 1  - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) # removed + wsdtdz 
-        dA[top] = Ap[top]
-
-    # If settling speed is DOWNWARD (sinking!)
-    if ws<=0:
-        aA[1:top]  = -beta/2 * (Kzp[0:top-1] + Kzp[1:top]) 
-        bA[1:top]  = 1 + wsdtdz - gamma[1:top]*dt  + beta/2*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1]) 
-        cA[1:top]  = -wsdtdz - beta/2 * (Kzp[1:top] + Kzp[2:top+1])
-        dA = Ap
-
-        # Bottom-Boundary: no flux for scalars
-        bA[0] =  1 + wsdtdz - (gamma[0]*dt) + beta/2*(Kzp[1] + Kzp[0]) 
-        cA[0] =  -wsdtdz -beta/2 * (Kzp[1] + Kzp[0])
-        dA[0] =  Ap[0]
-
-        # Top-Boundary: no flux for scalars
-        aA[top] =  -beta/2 * (Kzp[top] + Kzp[top-1])
-        bA[top] =  1 - gamma[top]*dt + beta/2 * (Kzp[top] + Kzp[top-1]) + wsdtdz # okay adding this here 
-        dA[top] = Ap[top]
-
-    # Thomas algorithm to solve for C
+    # Thomas algorithm to solve for concentration 
     algae = lib.TDMA(aA, bA, cA, dA, N)  
     diatoms.c = algae
-    # if ws>0:
-    #     algae[top] = algae[top] + Ap[top]*wsdtdz
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
