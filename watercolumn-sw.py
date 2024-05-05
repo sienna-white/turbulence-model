@@ -48,12 +48,16 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  =  2000 #1440*3*6 # 400  # number of time steps 
+M  = 1440*3*6 # 400  # number of time steps 
 
-read_from_input=False
-plot=True
+plot=False
 output=True
 
+output_csv=os.getenv("output_csv")
+ws = float(os.getenv("ws"))
+pmax = float(os.getenv("pmax"))
+pressure = float(os.getenv("pressure"))
+                          
 
 # Algae parameters 
 background_turbidity = 0.1
@@ -63,6 +67,9 @@ DIURNAL = True
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 1
 
+def save_at_end(depth_av_kz, ws, result):
+    print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
+    lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
 
 '''
 
@@ -81,8 +88,8 @@ hab = Algae_Species(k = 0.034,
                     net=True)
 
 diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+                pmax = pmax, #0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                ws = ws, #-1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                 Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                 Li = 0.006,      # specific loss rate [1/hour]
                 name = "Diatoms",
@@ -92,7 +99,7 @@ diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [c
 init = 200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = pressure# 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, diatoms.pmax)
@@ -481,15 +488,20 @@ for m in range(1,M):
                 'net_growth' : gamma}
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
+if output:
+    change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
+    depth_av_kz = np.mean(Kz)
+    print("Depth averaged U = ")
+    save_at_end(depth_av_kz, diatoms.ws, change)
+
+#*************************************************************************
 print(time.time()  - t1) 
 # saved_profiles.output_final_to_csv("initial_condition-%s.csv" % RUN_INFO)
 
 #***************************************************************************
 
-print(U)
-print(np.mean(U))
 
-plot = True
+plot = False
 if plot:
     if diatoms.net:
         f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=False)

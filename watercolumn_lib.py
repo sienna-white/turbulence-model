@@ -46,21 +46,23 @@ variable2units['net_growth'] = r'hour$^{-1}$'
 
 def check_initial_condition(Px0):
     csv_name='./initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
-    if os.path.isfile(csv_name):
-        print("Using initial condition from %s" % csv_name)
-        ic = pd.read_csv(csv_name)
-        Q2 = ic['Q2'].values
-        Q2L = ic['Q2L'].values
-        rho = ic['rho'].values
-        L = ic['L'].values
-        nu_t = ic['nu_t'].values
-        Kz = ic['Kz'].values
-        Kq = ic['Kq'].values
-        N_BV = ic['N_BV'].values
-        U = ic['U'].values 
-        return Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U
-    else: 
-        raise("No initial condition for this pressure gradient --> comment out this line!")
+    if ~os.path.isfile(csv_name):
+        csv_name='../initial_condition/initial_condition-pressure=2.00e-07.csv' 
+        print("No initial condition for this pressure gradient --> using default!")
+
+    print("Using initial condition from %s" % csv_name)
+    ic = pd.read_csv(csv_name)
+    Q2 = ic['Q2'].values
+    Q2L = ic['Q2L'].values
+    rho = ic['rho'].values
+    L = ic['L'].values
+    nu_t = ic['nu_t'].values
+    Kz = ic['Kz'].values
+    Kq = ic['Kq'].values
+    N_BV = ic['N_BV'].values
+    U = ic['U'].values 
+    return Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U
+   
 
 def diurnal_light(t, I_max, diurnal):
     '''Function to generate estimate of light according to diurnal cycle.
