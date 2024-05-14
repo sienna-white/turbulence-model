@@ -48,15 +48,17 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  = 1440*3*6 # 400  # number of time steps 
+M  = 2000 #1440*3*6 # 400  # number of time steps 
+
+read_from_input=False
 
 plot=False
 output=True
 
-output_csv=os.getenv("output_csv")
-ws = float(os.getenv("ws"))
-pmax = float(os.getenv("pmax"))
-pressure = float(os.getenv("pressure"))
+# output_csv=os.getenv("output_csv")
+# ws = float(os.getenv("ws"))
+# pmax = float(os.getenv("pmax"))
+# pressure = float(os.getenv("pressure"))
                           
 
 # Algae parameters 
@@ -65,7 +67,7 @@ LIGHT =  350
 DIURNAL = True 
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 1
+isave = 10
 
 def save_at_end(depth_av_kz, ws, result):
     print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
@@ -88,8 +90,8 @@ hab = Algae_Species(k = 0.034,
                     net=True)
 
 diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = pmax, #0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = ws, #-1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+                pmax = 0.5, #pmax, #0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                ws = 1.4e-5, #ws, #-1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                 Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
                 Li = 0.006,      # specific loss rate [1/hour]
                 name = "Diatoms",
@@ -99,9 +101,10 @@ diatoms = Algae_Species(k = 0.07,    # specific light attenuation coefficient [c
 init = 200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = pressure# 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = 2e-6# pressure# 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
+WIND = -2e-4     # m/s 
 RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, diatoms.pmax)
 if T_Px>0:
     RUN_INFO+="_TIDAL"
@@ -117,12 +120,8 @@ diatoms.set_initial_concentration(N, init=init, opt='constant')
 diatoms.save_total_mass()
 diatoms.set_vertical_grid(H, N, dz)
 
-hab.set_initial_concentration(N, init=init, opt='constant')
-hab.save_total_mass()
-hab.set_vertical_grid(H, N, dz)
-
 algae = diatoms.c
-algae2 = hab.c
+
 ##########################################################################################
 
 
@@ -262,6 +261,9 @@ n_profiles = int(M/isave)
 variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV',
                     'algae', 'biomass', 'net_growth']
 saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
+saved_profiles.Px0 = Px0
+saved_profiles.T_Px = T_Px
+saved_profiles.I_in = I_in
 
 # Save initial condition (first profile at time zero)
 data = {'U': U, 'C': C, 'Q2': Q2, 
@@ -323,7 +325,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     nu_t = (Sm * Q * L) + nu # Turbulent diffusivity for Q2
     Kq = (Sq * Q * L) + nu   # Turbulent viscosity
     Kz = (Sh * Q * L) + nu
-    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never = zero 
+    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never zero 
 
     #***************************************************************************
     #   Store last time's step variables (f --> fp, q2 --> q2p, etc)
@@ -338,7 +340,8 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, time):
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
-    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=None)
+    Wstress= WIND * dt/(dz*rho0) 
+    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=Wstress)
 
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
@@ -488,6 +491,7 @@ for m in range(1,M):
                 'net_growth' : gamma}
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
 
+output=False
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
     depth_av_kz = np.mean(Kz)
@@ -501,7 +505,7 @@ print(time.time()  - t1)
 #***************************************************************************
 
 
-plot = False
+plot = True
 if plot:
     if diatoms.net:
         f0, a0 = saved_profiles.plot_profiles('net_growth', skip=4, passed_string=RUN_INFO, show=False)
@@ -517,7 +521,7 @@ if plot:
     # f0, a0 = saved_profiles.plot_biomass(passed_string=RUN_INFO, show=False)
     # f0.savefig('output/growth/biomass-%s.png' % RUN_INFO)
 
-    # f0, a0 = saved_profiles.plot_profiles('algae', skip=4, passed_string=RUN_INFO, show=False)
+    f0, a0 = saved_profiles.plot_profiles('algae', skip=5, passed_string=RUN_INFO, show=True)
     # f0.savefig('output/growth/algae-%s.png' % RUN_INFO)
 
 

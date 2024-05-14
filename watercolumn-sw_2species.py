@@ -49,12 +49,16 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  = 1440*18*2 # 400  # number of time steps 
+M  = 10000 # 1440*18*2 # 400  # number of time steps 
 
 read_from_input=False
 plot=True
 output=True
 
+# output_csv=os.getenv("output_csv")
+# ws = float(os.getenv("ws"))
+# pmax = float(os.getenv("pmax"))
+# pressure = float(os.getenv("pressure"))
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 300 #200 #00
@@ -62,7 +66,10 @@ isave = 300 #200 #00
 # Algae parameters 
 background_turbidity =  0.16
 I_in = 350 
-
+DIURNAL = True 
+def save_at_end(depth_av_kz, ws, result):
+    print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
+    lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
 '''
 Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
@@ -90,13 +97,15 @@ Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm
 init = 5 # 20 #25 #50 #200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-4 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-W = 0.0
-# RUN_INFO='pressure=%2.2e_pmax=%2.2e_W=%f' % (Px0, Algae1.pmax, W)
-RUN_INFO='NOTIDESpx=%1.2e_a1ws=%1.2e_a1pmax=%1.2e_a2ws=1.2%e_a2pmax=%1.2e_W=%1.1f' % (Px0, Algae1.ws, Algae1.pmax, Algae2.ws, Algae2.pmax, W)
-
+WIND = -2e-4     # m/s 
+RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, Algae1.pmax)
+if T_Px>0:
+    RUN_INFO+="_TIDAL"
+if DIURNAL:
+    RUN_INFO+="_DIURNAL"
 
 ########################################################################################## 
 
@@ -336,9 +345,9 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #***************************************************************************
     #   Advance velocity (U,V)
     #***************************************************************************
-
+    Wstress= WIND * dt/(dz*rho0) 
     # Moved function itself into watercolumn_lib.py
-    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W)
+    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=Wstress)
     
     # Use Thomas algorithm to solve for U
     U = lib.TDMA(aU, bU, cU, dU, N)
@@ -346,7 +355,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #********************** LIGHT FOR THIS TIME STEP ***************************
     #***************************************************************************
     light =  lib.diurnal_light(t[m], 350, diurnal=True)
-    background_turbidity = 0.0 #16
     light, photic_depth = self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
     #***************************************************************************
     
@@ -511,7 +519,12 @@ for m in range(1,M):
                 'biomass1': sum(algae1), 'biomass2' : sum(algae2),
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
-
+output=False
+if output:
+    change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
+    depth_av_kz = np.mean(Kz)
+    print("Depth averaged U = ")
+    save_at_end(depth_av_kz, diatoms.ws, change)
 print(time.time()  - t1) 
 # saved_profiles.output_final_to_csv("initial_condition-%s.csv" % RUN_INFO)
 
@@ -523,6 +536,7 @@ f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3,
 
 f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=True)
 # f0.savefig('figures/two_species_wind/%s_U.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=RUN_INFO, show=True)
 
 
 # f0, a0 = saved_profiles.plot_biomass([Algae1, Algae2], ['biomass1', 'biomass2'], passed_string='', show=True)

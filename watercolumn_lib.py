@@ -45,9 +45,9 @@ variable2units['biomass'] = r'10$^6$ cells'
 variable2units['net_growth'] = r'hour$^{-1}$'
 
 def check_initial_condition(Px0):
-    csv_name='./initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
+    csv_name='initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
     if ~os.path.isfile(csv_name):
-        csv_name='../initial_condition/initial_condition-pressure=2.00e-07.csv' 
+        csv_name='initial_condition/initial_condition-pressure=2.00e-07.csv' 
         print("No initial condition for this pressure gradient --> using default!")
 
     print("Using initial condition from %s" % csv_name)
@@ -159,26 +159,26 @@ class SavedProfiles:
         time = self.saved_profiles['time'][0:] 
         hours = self.seconds2hours(time)
         diurnal = [diurnal_light(t, self.I_in, True) for t in time]
-        ax2 = axs[1].twinx()
-        axs[1].plot(hours[0:-2], diurnal[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
+        ax2 = axs[2].twinx()
+        axs[2].plot(hours[0:-2], diurnal[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
         print(hours, diurnal)
-        axs[1].plot([],[], 'o', label='Tidal forcing', alpha = 0.4, linewidth=3, color='skyblue')
+        axs[2].plot([],[], 'o', label='Tidal forcing', alpha = 0.4, linewidth=3, color='skyblue')
         if self.T_Px != 0:
             pressure = [self.Px0*math.cos(2*math.pi*t/(3600*self.T_Px)) for t in time]
             ax2.plot(hours[0:-2], pressure[0:-2], '-o',  alpha = 0.4, label='Tidal forcing', color='skyblue')
             print(hours, pressure)
-        axs[1].legend()
-        axs[1].grid(alpha = 0.5)
-        axs[1].set_title("Temporal forcings")
+        axs[2].legend()
+        axs[2].grid(alpha = 0.5)
+        axs[2].set_title("Temporal forcings")
 
         # Add concentrations 
-        axs[2] = self.add_profile_to_axis( 'algae1', plot_index, legend_ind, axs[2])
-        axs[2].set_title("Concentration of %s" % ListOfSpecies[0].name)
+        axs[1] = self.add_profile_to_axis( 'algae1', plot_index, legend_ind, axs[1])
+        axs[1].set_title("Concentration of %s" % ListOfSpecies[0].name)
 
         axs[3] = self.add_profile_to_axis( 'algae2', plot_index, legend_ind, axs[3])
         axs[3].set_title("Concentration of %s" % ListOfSpecies[1].name)
         axs[3].set_xlim(0, 25)
-        axs[2].set_xlim(0, 25)
+        axs[1].set_xlim(0, 25)
 
         return fig, axs
 
@@ -276,6 +276,7 @@ class SavedProfiles:
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
         ax.grid(alpha = 0.5)
         ax.set_ylabel('Depth (m)')
+        
         return ax 
     
     def get_plot_indices(self, skip):
@@ -294,7 +295,8 @@ class SavedProfiles:
         ls = '-'
 
         self.add_profile_to_axis(variable, plot_index, legend_ind, ax)
-        ax.set_title(variable2name[variable] + passed_string)
+        ax.set_xlabel(variable2units[variable])
+        ax.set_title(variable2name[variable] + ' ' +  passed_string)
         plt.tight_layout()
         if show:
             plt.show()
@@ -383,13 +385,13 @@ def advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=None):
     cU[0] = -beta/2*(nu_tp[1] + nu_tp[0])
     dU[0] = Up[0] - dt*Px[0]
 
-    # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
-    # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    # dU[top] = Up[top] - dt*Px[top] + beta*(nu_tp[top]/2)*W
-
-    # Top boundary: no stress
     aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
     bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
-    dU[top] = Up[top] - dt*Px[top]
+    dU[top] = Up[top] - dt*Px[top] + W # beta*(nu_tp[top]/2)*W
+
+    # # Top boundary: no stress
+    # aU[top] = -beta/2*(nu_tp[top]+nu_tp[top-1])
+    # bU[top] = 1 + beta/2*(nu_tp[top]+nu_tp[top-1])
+    # dU[top] = Up[top] - dt*Px[top]
 
     return aU, bU, cU, dU
