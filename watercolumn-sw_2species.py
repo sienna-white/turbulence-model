@@ -21,6 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import watercolumn_lib as lib
+import watercolumn_run_lib as wrl
 from phytoplankton import Algae_Species
 from phytoplankton import self_shading
 import time
@@ -63,21 +64,22 @@ output=True
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 300 #200 #00
 
-# Algae parameters 
+
+#***************************************************************************
+#   Algae parameters
+#***************************************************************************
 background_turbidity =  0.016
 I_in = 350 
 DIURNAL = True 
-def save_at_end(depth_av_kz, ws, result):
-    print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
-    lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
+
 '''
 Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
 '''
-# Show --> ws=1e-7
+
 
 Algae2 = Algae_Species(k = 0.0034, 
-                    pmax = 0.01, #08,
+                    pmax = 0.01, 
                     ws = 1.4e-5,
                     Hi = 40,
                     Li = 0.001,
@@ -86,15 +88,15 @@ Algae2 = Algae_Species(k = 0.0034,
                     net=True)
 
 Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.5,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
-                Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
-                Li = 0.0001,      # specific loss rate [1/hour]
+                pmax = 0.5,# 5,     # maximum specific growth rate [1/hour]
+                ws = -1.4e-5,       # vertical velocity [m/s]
+                Hi = 40,            # half-saturation of light-limited growth [mu mol photons * m^2/s]
+                Li = 0.0001,        # specific loss rate [1/hour]
                 name = "Diatoms",
                 self_shading=True,
                 net=True)
-
-init = 5 # 20 #25 #50 #200 
+init = 20 
+#***************************************************************************
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
 Px0 = 2e-7 # 2e-6  # Magnitude on pressure gradient forcing
@@ -115,20 +117,14 @@ if DIURNAL:
 
 ########################################################################################## 
 
-Algae1.set_initial_concentration(N, init=init, opt='constant')
-Algae1.save_total_mass()
-Algae1.set_vertical_grid(H, N, dz)
 
-Algae2.set_initial_concentration(N, init=init, opt='constant')
-Algae2.save_total_mass()
-Algae2.set_vertical_grid(H, N, dz)
-
-
-algae1 = Algae1.c
-algae2 = Algae2.c
 
 ##########################################################################################
 
+
+# def save_at_end(depth_av_kz, ws, result):
+#     print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
+#     lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
 
 
 # Initial conditions for temperature profile
@@ -161,7 +157,6 @@ E2=1.33 # [-]
 E3=0.25 # [-]
 Sq=0.2  # [-]
 ##########################################################################################
-
 # Create shorthand beta for use in discretization 
 beta = (dt/dz**2)
 top = N-1
@@ -202,7 +197,6 @@ Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 #***************************************************************************
 #   Initialize arrays 
 #***************************************************************************
-
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] .. or zzTop .. just kidding
 z = np.array([(-H + dz*(i + 0.5)) for i in range(N)]) 
 
@@ -210,6 +204,19 @@ z = np.array([(-H + dz*(i + 0.5)) for i in range(N)])
 empty_arrays = [np.zeros(N) for i in range(5)]
 C, rho, N_BV, U, V = empty_arrays
 
+#***************************************************************************
+#   Initialize algae  
+#***************************************************************************
+Algae1.set_initial_concentration(N, init=init, opt='constant')
+Algae1.save_total_mass()
+Algae1.set_vertical_grid(H, N, dz)
+
+Algae2.set_initial_concentration(N, init=init, opt='constant')
+Algae2.save_total_mass()
+Algae2.set_vertical_grid(H, N, dz)
+
+algae1 = Algae1.c
+algae2 = Algae2.c
 
 #***************************************************************************
 #   Initialize temperature / strafication profile 
@@ -259,7 +266,6 @@ Kq = (Sq * Q * L) + nu      # Turbulent viscosity
 Kz = (Sh * Q * L) + nu
 
 ##########################################################################################
-
 # Initialize based on initial condition
 Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
 
@@ -274,6 +280,7 @@ saved_profiles.Px0 = Px0
 saved_profiles.T_Px = T_Px
 saved_profiles.I_in = I_in
 
+RUN_TEST= wrl.Run(N, z)
 
 # Save initial condition (first profile at time zero)
 data = {'U': U, 'C': C, 'Q2': Q2, 
@@ -376,7 +383,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     wsdtdz  = abs(ws*dt)/dz
 
     gamma1 = Algae1.get_loss_and_growth(I_in = light, current_concentration = Ap1)
-
     aA1, bA1, cA1, dA1 = lib.advance_algae(ws, wsdtdz, gamma1, beta, Kzp, Ap1, N, top, dt)
 
     # Thomas algorithm to solve for C
@@ -390,7 +396,6 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     wsdtdz  = abs(ws*dt)/dz
 
     gamma2 = Algae2.get_loss_and_growth(I_in = light, current_concentration = Ap2)
-    
     aA2, bA2, cA2, dA2 = lib.advance_algae(ws, wsdtdz, gamma2, beta, Kzp, Ap2, N, top, dt)
 
     # Thomas algorithm to solve for C
@@ -417,7 +422,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     dC[top] = Cp[-1]
 
     # Thomas algorithm to solve for C
-    C = lib.TDMA(aC, bC, cC, dC, N)
+    C = Cp #lib.TDMA(aC, bC, cC, dC, N)
 
     # Update density and Brunt-Vaisala frequency
     rho = rho0*(1-alpha*(C - 15))  
@@ -529,6 +534,9 @@ for m in range(1,M):
                 'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
                 'biomass1': sum(algae1), 'biomass2' : sum(algae2),
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
+        RUN_TEST.create_dataframe_from_saved_profiles(m, **data)
+        RUN_TEST.add_1d_data(m, **{'biomass1': sum(algae1), 'biomass2' : sum(algae2)})
+        assert(False)
         saved_profiles.save_profile_at_timestep(m, t[m], **data)
 output=False
 if output:
@@ -542,14 +550,14 @@ print(time.time()  - t1)
 #***************************************************************************
 
 
-f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=False)
+f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=True)
 plt.suptitle('%s' % TITLE)
 f0.savefig('figures/two_species_wind1/%s_phasing.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=False)
+f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=True)
 f0.savefig('figures/two_species_wind1/%s_U.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=' ', show=False)
+f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=' ', show=True)
 f0.savefig('figures/two_species_wind1/%s_Kz.png' % RUN_INFO)
 
 f0, a0 = saved_profiles.plot_profiles('C', skip=5, passed_string=' ', show=False)

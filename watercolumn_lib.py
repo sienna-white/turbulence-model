@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from turbulence_model import Turbulence_Model as TM 
 import matplotlib as mpl
 import pandas as pd 
 import os
@@ -105,6 +104,8 @@ class SavedProfiles:
         self.saved_profiles = self.initialize_saved_profiles()
         self.initialize_saved_profiles()
 
+
+
     def initialize_saved_profiles(self):
         saved_profiles = {} 
         for variable in self.variables_to_save:
@@ -115,6 +116,7 @@ class SavedProfiles:
     def store_z(self, z):
         self.z = z
 
+    
     def save_profile_at_timestep(self, profile_num, time, **kwargs):
         #U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, biomass):
         profile_num = profile_num//self.isave
