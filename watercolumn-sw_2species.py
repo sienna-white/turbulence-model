@@ -138,6 +138,7 @@ dzdelC = 4       # Thickness of initial thermocline
 alpha  = 0.0     # Thermal expansivity, set to zero for passive scalar case
 base_temp = 15   # Temperature of water column [deg C]
 
+##########################################################################################
 # Physical parameters 
 z0 = 0.01         # Bottom roughness [m]
 zb = 10*z0        # Bottom height [m]
@@ -159,6 +160,7 @@ E1=1.8  # [-]
 E2=1.33 # [-]
 E3=0.25 # [-]
 Sq=0.2  # [-]
+##########################################################################################
 
 # Create shorthand beta for use in discretization 
 beta = (dt/dz**2)
@@ -197,9 +199,12 @@ Should be used to adjust initial temperature/salinity profiles
 Velocity initialized to zero
 Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 '''
+#***************************************************************************
+#   Initialize arrays 
+#***************************************************************************
+
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] .. or zzTop .. just kidding
-z = [(-H + dz*(i + 0.5)) for i in range(N)]
-z = np.array(z)
+z = np.array([(-H + dz*(i + 0.5)) for i in range(N)]) 
 
 # Initalize arrays for temperature, density, Brunt-Vaisala frequency, velocity
 empty_arrays = [np.zeros(N) for i in range(5)]
