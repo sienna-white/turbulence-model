@@ -49,7 +49,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  = 10000 # 1440*18*2 # 400  # number of time steps 
+M  = 1440*18*2 # 400  # number of time steps 
 
 read_from_input=False
 plot=True
@@ -64,7 +64,7 @@ output=True
 isave = 300 #200 #00
 
 # Algae parameters 
-background_turbidity =  0.16
+background_turbidity =  0.016
 I_in = 350 
 DIURNAL = True 
 def save_at_end(depth_av_kz, ws, result):
@@ -77,19 +77,19 @@ Cyanobacteria = 1.38e-4 m/s
 # Show --> ws=1e-7
 
 Algae2 = Algae_Species(k = 0.0034, 
-                    pmax = 0.05, #08,
+                    pmax = 0.01, #08,
                     ws = 1.4e-5,
                     Hi = 40,
-                    Li = 0.004,
+                    Li = 0.001,
                     name = "HAB",
                     self_shading=True,
                     net=True)
 
 Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.05,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-6, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
+                pmax = 0.5,# 5, #0.1, #0.05,     # maximum specific growth rate [1/hour]
+                ws = -1.4e-5, #-1.4e-6, #1e-5, #-1e-6, #-1e-9,#-1e-3, #-200,       # vertical velocity [m/s]
                 Hi = 40,         # half-saturation of light-limited growth [mu mol photons * m^2/s]
-                Li = 0.006,      # specific loss rate [1/hour]
+                Li = 0.0001,      # specific loss rate [1/hour]
                 name = "Diatoms",
                 self_shading=True,
                 net=True)
@@ -97,15 +97,21 @@ Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm
 init = 5 # 20 #25 #50 #200 
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = 2e-7 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-WIND = -2e-4     # m/s 
-RUN_INFO='pressure=%2.2e_pmax=%2.2e' % (Px0, Algae1.pmax)
+rhoA = 1.23  # kg / m^3
+u_star = 0.05 * 2 # m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
+WIND = u_star**2 * rhoA  # this is rho * u*^2
+RUN_INFO='pressure=%2.2e_pmax1=%2.2e_pmax2=%2.2e_Wind=%2.1e' % (Px0, Algae1.pmax, Algae2.pmax, WIND)
+TITLE= "Px=%2.1e, Wind=%2.1e" % (Px0,  WIND)
+
 if T_Px>0:
     RUN_INFO+="_TIDAL"
+    TITLE+=" (TIDAL)"
 if DIURNAL:
     RUN_INFO+="_DIURNAL"
+    TITLE+= " (DIURNAL LIGHT)"
 
 ########################################################################################## 
 
@@ -531,12 +537,18 @@ print(time.time()  - t1)
 #***************************************************************************
 
 
-f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=True)
-# f0.savefig('figures/two_species_wind/%s_phasing.png' % RUN_INFO)
+f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=False)
+plt.suptitle('%s' % TITLE)
+f0.savefig('figures/two_species_wind1/%s_phasing.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=True)
-# f0.savefig('figures/two_species_wind/%s_U.png' % RUN_INFO)
-f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=RUN_INFO, show=True)
+f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=False)
+f0.savefig('figures/two_species_wind1/%s_U.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=' ', show=False)
+f0.savefig('figures/two_species_wind1/%s_Kz.png' % RUN_INFO)
+
+f0, a0 = saved_profiles.plot_profiles('C', skip=5, passed_string=' ', show=False)
+# f0.savefig('figures/two_species_wind/%s_Kz.png' % RUN_INFO)
 
 
 # f0, a0 = saved_profiles.plot_biomass([Algae1, Algae2], ['biomass1', 'biomass2'], passed_string='', show=True)

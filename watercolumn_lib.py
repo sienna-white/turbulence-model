@@ -149,8 +149,8 @@ class SavedProfiles:
 
         # Add biomass 
         axs[0].set_title("Biomass over time")
-        label1 = "Biomass of %s" % ListOfSpecies[0].name 
-        label2 = "Biomass of %s" % ListOfSpecies[1].name
+        label1 = "Biomass of %s (pmax = %1.1e, ws = %1.1e)" % (ListOfSpecies[0].name, ListOfSpecies[0].pmax, ListOfSpecies[0].ws)
+        label2 = "Biomass of %s (pmax = %1.1e, ws = %1.1e)" % (ListOfSpecies[1].name, ListOfSpecies[1].pmax, ListOfSpecies[1].ws)
         axs[0] = self.add_time_series_to_axis('biomass1', label1, axs[0])
         axs[0] = self.add_time_series_to_axis('biomass2', label2, axs[0])
         axs[0].legend()
