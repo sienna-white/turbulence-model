@@ -15,20 +15,31 @@ strat = wrl.WCRun(None, None)
 strat.read_from_file('../../output/stratified_model_nowind.nc')
 
 unstrat = wrl.WCRun(None, None)
-unstrat.read_from_file('../../output/unstratified_model_nowind.nc')
+unstrat.read_from_file('../../unstratified_model_nowind.nc')
 
-print(unstrat.dataset)
 
+
+def plot1d(ds, variable):
+    ds = ds.dataset[variable].dropna(dim="time")
+    return ds.time, ds.values
+########################################
+#           Plot photic depth
+########################################
 fig = plt.figure(figsize=(8,4))
 ax = plt.gca()
 ax.grid(alpha=0.3)
 
-plt.plot(strat.dataset["photic_depth"].dropna(dim="time"), '-o', label="Stratified")
-plt.plot(unstrat.dataset["photic_depth"].dropna(dim="time"), '--', label="Untratified")
+x,y = plot1d(strat, "photic_depth")
+plt.plot(x,y, '-', label="Stratified")
+x,y = plot1d(unstrat, "photic_depth")
+plt.plot(x,y, '-', label="Unstratified")
+
 ax.legend() 
 ax.set_ylim()
-fig.savefig("test.png")
+fig.savefig("photic_depth.png")
 
+
+########################################
 fig = plt.figure(figsize=(8,4))
 ax = plt.gca()
 ax.grid(alpha=0.3)
@@ -39,10 +50,6 @@ ax.legend()
 ax.set_ylim()
 
 
-plt.plot(strat.dataset["Kz"].dropna(dim="time").isel(z=zlevel), '-o', label="Stratified")
-
-
-# unstrat.plot_profiles(self, variable, skip=1, passed_string='', show=True) #("C", 1, 1, ax) #, label="Unstratified")
 
 plot_var = [ "C","N_BV", "U", "Kz"] #, , , "algae1"]
 
@@ -50,7 +57,7 @@ fig, axs = plt.subplots(nrows=4, ncols=2, figsize=(10, 20))
 axs = axs.ravel()
 for i,variable in enumerate(plot_var): 
     fig, ax = strat.plot_profiles(variable, skip=11, passed_string='(stratified)', show=False, ax=axs[i*2])
-    fig, ax = unstrat.plot_profiles(variable, skip=3, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
+    fig, ax = unstrat.plot_profiles(variable, skip=11, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
 fig.savefig("Composite_nowind.png")
 
 assert(False)
