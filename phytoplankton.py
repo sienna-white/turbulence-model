@@ -123,38 +123,45 @@ class SelfShading():
         if self.self_shading:
             for species in ListofAlgae:
                 self.kxC += species.k * species.c
-        vector = self.kxC +  self.add_txz  # This makes sense to be plus to me 
+        vector = self.kxC*self.corrected_z +  self.add_txz  # This makes sense to be plus to me 
+        self.kxC =  self.kxC*0 
         I = np.zeros(self.N)
         for i in (range(self.N)):
             I[i] = np.sum(vector[i:-1]) * self.z[i]
-
         I = I_in * np.exp(I)
-        try: 
-            photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
-        except:
-            photic_depth = 0
-        return I, photic_depth
+        
+
+        # photic_depth =  self.z[I<(0.1 * I_in)][-1] # Get first element where light is less than 90% of I_in
+        # try: 
+        #     photic_depth =  self.z[I<(0.1 * I_in)][-1] # Get first element where light is less than 90% of I_in
+        # except:
+        #     photic_depth = 0
+        return I #photic_depth
+
 
 def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
     ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
 
-    z  = ListofAlgae[0].z
-    dz = ListofAlgae[0].dz
-    N = ListofAlgae[0].N
+    z  = ListofAlgae[0].z       # m 
+    dz = ListofAlgae[0].dz      # m 
+    N = ListofAlgae[0].N        # [-]
     # We want water depth [cm] to be zero at the top, 20 at the bottom (pos. numbers)
     corrected_z = (-1) * z 
     kxC = np.zeros(N)
     if self_shading:
         for species in ListofAlgae:
             kxC += species.k * species.c
-
+    print("kxc:")
+    print(kxC)
     I = np.zeros(N)
     vector = kxC + (turbidity*corrected_z) # This makes sense to be plus to me 
     for i in (range(N)):
         I[i] = np.sum(vector[i:-1]) * z[i]
 
     I0 = I_in * np.exp(I)
-      
+    print("When c1 = %f and c2=%f, light=" % (ListofAlgae[0].c[N], ListofAlgae[1].c[N]))
+    print(I0)
+    assert(False)
     try: 
         photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
     except:

@@ -54,9 +54,9 @@ seventy_two_hrs=259200
 M  = seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
 read_from_input=False
-save_output=False
+save_output=True
 plot=True
-output=True
+output=False
 
 # output_csv=os.getenv("output_csv")
 # ws = float(os.getenv("ws"))
@@ -70,9 +70,9 @@ isave = 300 #200 #00
 #***************************************************************************
 #   Algae parameters
 #***************************************************************************
-background_turbidity =  0.016
+background_turbidity =  0.0016
 I_in = 350 
-DIURNAL = True 
+DIURNAL = False #  
 
 '''
 Diatoms ws = -1.38e-5 m/s
@@ -97,7 +97,7 @@ Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm
                 name = "Diatoms",
                 self_shading=True,
                 net=True)
-init = 20 
+init = 1
 #***************************************************************************
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
@@ -360,8 +360,8 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
 
     #********************** LIGHT FOR THIS TIME STEP ***************************
     #***************************************************************************
-    light =  lib.diurnal_light(t[m], 350, diurnal=True)
-    light, photic_depth = SelfShade.calc_self_shading([Algae1, Algae2], I_in=light)
+    Light =  lib.diurnal_light(t[m], 350, diurnal=DIURNAL)
+    light = SelfShade.calc_self_shading([Algae1, Algae2], I_in=Light)
     #self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
     #***************************************************************************
     
@@ -411,7 +411,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     dC[top] = Cp[-1]
 
     # Thomas algorithm to solve for C
-    C =  Cp #lib.TDMA(aC, bC, cC, dC, N)
+    C =  lib.TDMA(aC, bC, cC, dC, N)
 
     # Update density and Brunt-Vaisala frequency
     rho = rho0*(1-alpha*(C - base_temp))  
@@ -502,6 +502,8 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
                 'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
                 'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
+        photic_depth = z[light>(0.1 * Light)][0]
+        print(photic_depth)
         data1d = {'biomass1': sum(algae1), 'biomass2' : sum(algae2), "photic_depth": photic_depth}
         RUN_TEST.save_2d_data(time, **data2d)
         RUN_TEST.save_1d_data(time, **data1d)
@@ -529,7 +531,7 @@ output=False
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL),
               "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 RUN_TEST.save_run_info(**attributes) 
-RUN_TEST.save_dataset("stratified_model_nowind.nc")
+RUN_TEST.save_dataset("unstratified_model_nowind.nc")
 
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 

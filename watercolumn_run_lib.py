@@ -70,6 +70,7 @@ class WCRun:
             df.index.name = 'time'
             for key, value in kwargs.items():
                 df[key] = value
+                print(key, value)
             dfnc = df.to_xarray() 
             self.dataset = xr.concat([dfnc, self.dataset], dim='time')
         else: 
@@ -82,8 +83,8 @@ class WCRun:
             df = pd.DataFrame(index=index) 
             for key, value in kwargs.items():
                 df[key] = value
-            # dfnc = df.to_xarray()
-            dfnc = (df.unstack('z').to_xarray().to_array('time'))
+            dfnc = df.to_xarray()
+            # dfnc = (df.unstack('z').to_xarray().to_array('time'))
 
             if self.first_data: 
                 self.dataset= dfnc 
