@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd 
 import os
+from numba import jit 
 
 ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV']
 variable2name = {} 
@@ -83,6 +84,9 @@ def initialize_abcd(N):
     d = np.zeros(N)
     return a, b, c, d
 
+
+
+@jit 
 def TDMA(aX, bX, cX, dX, N):
     # Tri Diagonal Matrix Algorithm(a.k.a Thomas algorithm) solver
     # a = Lower Diag, b = Main Diag, c = Upper Diag, d = solution vector
@@ -105,7 +109,6 @@ class SavedProfiles:
         self.initialize_saved_profiles()
 
 
-
     def initialize_saved_profiles(self):
         saved_profiles = {} 
         for variable in self.variables_to_save:
@@ -116,7 +119,6 @@ class SavedProfiles:
     def store_z(self, z):
         self.z = z
 
-    
     def save_profile_at_timestep(self, profile_num, time, **kwargs):
         #U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae, biomass):
         profile_num = profile_num//self.isave
@@ -330,6 +332,7 @@ def save_output(csv_file, var1, var2, output, header):
 
     df.to_csv(csv_file, mode=mode, index=False, header=header)
     
+
 
 def advance_algae(ws, wsdtdz, gamma, beta, Kzp, Ap, N, top, dt):
     aA, bA, cA, dA = initialize_abcd(N)

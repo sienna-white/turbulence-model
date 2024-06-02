@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import watercolumn_lib as lib
 import watercolumn_run_lib as wrl
-from phytoplankton import Algae_Species
+from phytoplankton import Algae_Species, SelfShading
 from phytoplankton import self_shading
 import time
 import sys
@@ -50,9 +50,11 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-M  = 1440*18*2 # 400  # number of time steps 
+seventy_two_hrs=259200
+M  = seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
 read_from_input=False
+save_output=False
 plot=True
 output=True
 
@@ -88,7 +90,7 @@ Algae2 = Algae_Species(k = 0.0034,
                     net=True)
 
 Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.5,# 5,     # maximum specific growth rate [1/hour]
+                pmax = 0.3,# 5,     # maximum specific growth rate [1/hour]
                 ws = -1.4e-5,       # vertical velocity [m/s]
                 Hi = 40,            # half-saturation of light-limited growth [mu mol photons * m^2/s]
                 Li = 0.0001,        # specific loss rate [1/hour]
@@ -99,14 +101,15 @@ init = 20
 #***************************************************************************
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-7 # 2e-6  # Magnitude on pressure gradient forcing
-T_Px = 12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+Px0 = 2e-5 # 2e-6  # Magnitude on pressure gradient forcing
+T_Px = 0#12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 rhoA = 1.23  # kg / m^3
-u_star = 0.05 * 2 # m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
-WIND = u_star**2 * rhoA  # this is rho * u*^2
+Wind = 0 #2 
+# u_star =  # m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
+WIND = (0.05 * Wind)**2 * rhoA  # this is rho * u*^2
 RUN_INFO='pressure=%2.2e_pmax1=%2.2e_pmax2=%2.2e_Wind=%2.1e' % (Px0, Algae1.pmax, Algae2.pmax, WIND)
-TITLE= "Px=%2.1e, Wind=%2.1e" % (Px0,  WIND)
+TITLE= "Px=%2.1e, Wind=%2.1e STRAT OFF" % (Px0,  WIND)
 
 if T_Px>0:
     RUN_INFO+="_TIDAL"
@@ -128,10 +131,10 @@ if DIURNAL:
 
 
 # Initial conditions for temperature profile
-delC   = 5       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
+delC   = 4       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
 zdelC  = -5      # Position of initial thermocline
 dzdelC = 4       # Thickness of initial thermocline 
-alpha  = 0.0     # Thermal expansivity, set to zero for passive scalar case
+alpha  =  2.1e-4      # Thermal expansivity, set to zero for passive scalar case
 base_temp = 15   # Temperature of water column [deg C]
 
 ##########################################################################################
@@ -179,10 +182,12 @@ def calculate_sh(gh):
     return A2*(1-6*A1/B1)/(1-3*A2*gh*(B2+6*A1))
 
 def calculate_brunt_vaisala(rho_, N_BV):
-    for i in range(0,top):
-        dpdz = (rho_[i+1] - rho_[i])/dz     # Density gradient 
-        N_BV[i] = math.sqrt(abs((-g/rho0)* dpdz))
-    N_BV[top] = math.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
+    # for i in range(0,top):
+    #     dpdz = (rho_[i+1] - rho_[i])/dz     # Density gradient 
+    dpdz = np.zeros(N)
+    dpdz[0:top-1] = rho_[1:top] - rho_[0:top-1]/dz
+    N_BV = np.sqrt(abs((-g/rho0)* dpdz))
+    N_BV[top] = np.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
     return N_BV
 #***************************************************************************
 
@@ -204,6 +209,9 @@ z = np.array([(-H + dz*(i + 0.5)) for i in range(N)])
 empty_arrays = [np.zeros(N) for i in range(5)]
 C, rho, N_BV, U, V = empty_arrays
 
+# Intialize an object for saving profiles throughout the model run
+RUN_TEST= wrl.WCRun(N, z, save_output=save_output) 
+
 #***************************************************************************
 #   Initialize algae  
 #***************************************************************************
@@ -218,6 +226,7 @@ Algae2.set_vertical_grid(H, N, dz)
 algae1 = Algae1.c
 algae2 = Algae2.c
 
+SelfShade = SelfShading(z, N, background_turbidity, self_shading=True)
 #***************************************************************************
 #   Initialize temperature / strafication profile 
 #***************************************************************************
@@ -271,27 +280,6 @@ Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
 
 ##########################################################################################   
 
-# Intialize an object for saving profiles throughout the model run
-n_profiles = int(M/isave)
-variables_to_save = ['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV',
-                    'algae1', 'algae2', 'biomass1', 'biomass2', 'net_growth1', 'net_growth2']
-saved_profiles = lib.SavedProfiles(n_profiles, variables_to_save, N, isave)  
-saved_profiles.Px0 = Px0
-saved_profiles.T_Px = T_Px
-saved_profiles.I_in = I_in
-
-RUN_TEST= wrl.Run(N, z)
-
-# Save initial condition (first profile at time zero)
-data = {'U': U, 'C': C, 'Q2': Q2, 
-        'Q2L': Q2L, 'rho': rho, 'L': L,
-        'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-        'N_BV': N_BV, 'algae1': Algae1.c, 'algae2' : Algae2.c, 'biomass1': sum(Algae1.c), 
-        'biomass2':  sum(Algae2.c), 'net_growth1': Algae1.c*0, 'net_growth2' : Algae2.c*0}
-saved_profiles.save_profile_at_timestep(0, 0, **data)
-
-# Store z in our object so we can plot the profiles later 
-saved_profiles.store_z(z)
 
 
 def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
@@ -373,7 +361,8 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     #********************** LIGHT FOR THIS TIME STEP ***************************
     #***************************************************************************
     light =  lib.diurnal_light(t[m], 350, diurnal=True)
-    light, photic_depth = self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
+    light, photic_depth = SelfShade.calc_self_shading([Algae1, Algae2], I_in=light)
+    #self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
     #***************************************************************************
     
     #***************************************************************************
@@ -422,10 +411,10 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     dC[top] = Cp[-1]
 
     # Thomas algorithm to solve for C
-    C = Cp #lib.TDMA(aC, bC, cC, dC, N)
+    C =  Cp #lib.TDMA(aC, bC, cC, dC, N)
 
     # Update density and Brunt-Vaisala frequency
-    rho = rho0*(1-alpha*(C - 15))  
+    rho = rho0*(1-alpha*(C - base_temp))  
     N_BV = calculate_brunt_vaisala(rho, N_BV)
 
     #***************************************************************************
@@ -499,7 +488,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     # Check length scale 
     ind = ((L**2)*(N_BV**2)) > (0.281*Q2) # Vectorized if-statement 
     if sum(ind) > 0: 
-        Q2L[ind] = Q2[ind]*math.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
+        Q2L[ind] = Q2[ind]*np.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
         L[ind] = Q2L[ind] / Q2[ind]
     L[abs(L) <= zb] = zb
 
@@ -507,7 +496,17 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     nu_t = Sm*Q*L + nu
     Kz = Sh*Q*L + nu   
 
-    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma1, gamma2]
+    if (time%isave) == 0:
+        # Pack data into dictionary structure before saving 
+        data2d = {'U': U, 'C': C, 'Q2': Q2, 
+                'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
+                'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
+                'net_growth1': gamma1, 'net_growth2' : gamma2}
+        data1d = {'biomass1': sum(algae1), 'biomass2' : sum(algae2), "photic_depth": photic_depth}
+        RUN_TEST.save_2d_data(time, **data2d)
+        RUN_TEST.save_1d_data(time, **data1d)
+
+    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2]
 
 
 #***************************************************************************
@@ -519,48 +518,54 @@ for m in range(1,M):
     #     print('Time step = %d' % m)
 
     # Advance the model by one timestep
-    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, m) 
+    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time=m) 
 
     # Unpack output
-    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, gamma1, gamma2 = output
+    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2 = output
 
-    if m%isave == 0:
-        # Algae1.save_total_mass()
-        # Algae2.save_total_mass()
-        # Pack data into dictionary structure before saving 
-        data = {'U': U, 'C': C, 'Q2': Q2, 
-                'Q2L': Q2L, 'rho': rho, 'L': L,
-                'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-                'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
-                'biomass1': sum(algae1), 'biomass2' : sum(algae2),
-                'net_growth1': gamma1, 'net_growth2' : gamma2}
-        RUN_TEST.create_dataframe_from_saved_profiles(m, **data)
-        RUN_TEST.add_1d_data(m, **{'biomass1': sum(algae1), 'biomass2' : sum(algae2)})
-        assert(False)
-        saved_profiles.save_profile_at_timestep(m, t[m], **data)
+
 output=False
+
+attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL),
+              "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
+RUN_TEST.save_run_info(**attributes) 
+RUN_TEST.save_dataset("stratified_model_nowind.nc")
+
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
     depth_av_kz = np.mean(Kz)
     print("Depth averaged U = ")
     save_at_end(depth_av_kz, diatoms.ws, change)
-print(time.time()  - t1) 
-# saved_profiles.output_final_to_csv("initial_condition-%s.csv" % RUN_INFO)
+    
+print("Total time = %f" % (time.time()  - t1))
+
+f0, a0 = RUN_TEST.plot_profiles('U', skip=1, passed_string=TITLE, show=True)
+f0.savefig('figures/stratification/%s_U.png' % TITLE)
+
+f0, a0 = RUN_TEST.plot_profiles('Kz', skip=1, passed_string=TITLE, show=True)
+f0.savefig('figures/stratification/%s_KZ.png' % TITLE)
+
+f0, a0 = RUN_TEST.plot_profiles('C', skip=1, passed_string=TITLE, show=True)
+f0.savefig('figures/stratification/%s_C.png' % TITLE)
+
+f0, a0 = RUN_TEST.plot_profiles('N_BV', skip=1, passed_string=TITLE, show=True)
+f0.savefig('figures/stratification/%s_N_BV.png' % TITLE)
+
+f0, a0 = RUN_TEST.plot_phasing([Algae1, Algae2], passed_string=TITLE, skip=3, show=True)
+plt.suptitle('%s' % TITLE)
+f0.savefig('figures/stratification/%s_PHASING.png' % TITLE)
 
 #***************************************************************************
 
 
-f0, a0 = saved_profiles.plot_phasing([Algae1, Algae2], passed_string='', skip=3, show=True)
-plt.suptitle('%s' % TITLE)
-f0.savefig('figures/two_species_wind1/%s_phasing.png' % RUN_INFO)
+# f0.savefig('figures/two_species_wind1/%s_phasing.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string='', show=True)
-f0.savefig('figures/two_species_wind1/%s_U.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=' ', show=True)
-f0.savefig('figures/two_species_wind1/%s_Kz.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('C', skip=5, passed_string=' ', show=False)
+# f0, a0 = saved_profiles.plot_profiles('Kz', skip=5, passed_string=' ', show=True)
+# f0.savefig('figures/two_species_wind1/%s_Kz.png' % RUN_INFO)
+
+# f0, a0 = saved_profiles.plot_profiles('C', skip=5, passed_string=' ', show=False)
 # f0.savefig('figures/two_species_wind/%s_Kz.png' % RUN_INFO)
 
 

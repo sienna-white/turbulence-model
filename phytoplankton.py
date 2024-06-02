@@ -107,7 +107,34 @@ class Algae_Species:
 
 
 # Lives outside the class since we need to calculate light intensity for all species 
-    
+
+class SelfShading():
+    def __init__(self, z, N, turbidity, self_shading=True):
+        self.turbidity = turbidity
+        self.self_shading = self_shading 
+        self.z  = z
+        self.N = N
+        self.kxC = np.zeros(self.N)
+        self.corrected_z = (-1) * self.z 
+        self.add_txz = self.turbidity * self.corrected_z
+        self.I = np.zeros(self.N)
+
+    def calc_self_shading(self, ListofAlgae, I_in):
+        if self.self_shading:
+            for species in ListofAlgae:
+                self.kxC += species.k * species.c
+        vector = self.kxC +  self.add_txz  # This makes sense to be plus to me 
+        I = np.zeros(self.N)
+        for i in (range(self.N)):
+            I[i] = np.sum(vector[i:-1]) * self.z[i]
+
+        I = I_in * np.exp(I)
+        try: 
+            photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
+        except:
+            photic_depth = 0
+        return I, photic_depth
+
 def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
     ''' Use Lambert-Beer's Law to calculate light intensity at each depth '''
 
@@ -127,11 +154,12 @@ def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
         I[i] = np.sum(vector[i:-1]) * z[i]
 
     I0 = I_in * np.exp(I)
-    return I0, 0 #photic_depth    
-    # try: 
-    #     photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
-    # except:
-    #     photic_depth = 0
+      
+    try: 
+        photic_depth =  z[I<(0.9 * I_in)][-1] # Get first element where light is less than 90% of I_in
+    except:
+        photic_depth = 0
+    return I0, photic_depth #photic_depth  
 
     # print("Photic depth is %2.2f meters" % photic_depth)
 
