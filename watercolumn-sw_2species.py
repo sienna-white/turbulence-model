@@ -72,7 +72,7 @@ isave = 300 #200 #00
 #***************************************************************************
 background_turbidity =  0.0016
 I_in = 350 
-DIURNAL = False #  
+DIURNAL = True #  
 
 '''
 Diatoms ws = -1.38e-5 m/s
@@ -101,11 +101,11 @@ init = 1
 #***************************************************************************
 
 # Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-5 # 2e-6  # Magnitude on pressure gradient forcing
+Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
 T_Px = 0#12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 rhoA = 1.23  # kg / m^3
-Wind = 0 #2 
+Wind = 2 
 # u_star =  # m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
 WIND = (0.05 * Wind)**2 * rhoA  # this is rho * u*^2
 RUN_INFO='pressure=%2.2e_pmax1=%2.2e_pmax2=%2.2e_Wind=%2.1e' % (Px0, Algae1.pmax, Algae2.pmax, WIND)
@@ -182,10 +182,11 @@ def calculate_sh(gh):
     return A2*(1-6*A1/B1)/(1-3*A2*gh*(B2+6*A1))
 
 def calculate_brunt_vaisala(rho_, N_BV):
-    # for i in range(0,top):
-    #     dpdz = (rho_[i+1] - rho_[i])/dz     # Density gradient 
     dpdz = np.zeros(N)
-    dpdz[0:top-1] = rho_[1:top] - rho_[0:top-1]/dz
+    for i in range(0,top):
+        dpdz[i] = (rho_[i+1] - rho_[i])/dz     # Density gradient 
+    # dpdz = np.zeros(N)
+    # dpdz[0:top-1] = rho_[1:top] - rho_[0:top-1]/dz
     N_BV = np.sqrt(abs((-g/rho0)* dpdz))
     N_BV[top] = np.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
     return N_BV
@@ -403,7 +404,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     # Bottom-Boundary: no flux for scalars
     bC[0] = 1+0.5*beta*(Kzp[1] + Kzp[0])
     cC[0] = -0.5*beta*(Kzp[1] + Kzp[0])
-    dC[0] =  Cp[0]
+    dC[0] =  Cp[0] 
 
     # Top-Boundary: no flux for scalars
     aC[top] = -0.5*beta*(Kzp[top] + Kzp[top-1])
@@ -411,7 +412,7 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
     dC[top] = Cp[-1]
 
     # Thomas algorithm to solve for C
-    C =  lib.TDMA(aC, bC, cC, dC, N)
+    C =   lib.TDMA(aC, bC, cC, dC, N)
 
     # Update density and Brunt-Vaisala frequency
     rho = rho0*(1-alpha*(C - base_temp))  
@@ -502,8 +503,10 @@ def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
                 'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
                 'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
-        photic_depth = z[light>(0.1 * Light)][0]
-        print(photic_depth)
+        if Light<1:
+            photic_depth = 0
+        else:
+            photic_depth = z[light>(0.1 * Light)][0]
         data1d = {'biomass1': sum(algae1), 'biomass2' : sum(algae2), "photic_depth": photic_depth}
         RUN_TEST.save_2d_data(time, **data2d)
         RUN_TEST.save_1d_data(time, **data1d)
@@ -531,7 +534,7 @@ output=False
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL),
               "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 RUN_TEST.save_run_info(**attributes) 
-RUN_TEST.save_dataset("unstratified_model_nowind.nc")
+RUN_TEST.save_dataset("unstratified_model_Px=6_diurnal.nc")
 
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 

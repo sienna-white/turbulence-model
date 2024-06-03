@@ -23,10 +23,10 @@ variable2name['algae'] = r'Algae concentration'
 variable2name['biomass'] = r'Total algae biomass'
 variable2name['net_growth'] = r'Net Algae Growth (loss + growth)'
 
-variable2name['algae1'] = r'Algae concentration'
+variable2name['algae1'] = r'Algae concentration Diatoms'
 variable2name['biomass1'] = r'Total algae biomass (species 1)'
 variable2name['net_growth1'] = r'Net Algae Growth (loss + growth)'
-variable2name['algae2'] = r'Algae concentration'
+variable2name['algae2'] = r'Algae concentration HABs'
 variable2name['biomass2'] = r'Total algae biomass (species 2)'
 variable2name['net_growth2'] = r'Net Algae Growth (loss + growth)'
 
@@ -70,7 +70,6 @@ class WCRun:
             df.index.name = 'time'
             for key, value in kwargs.items():
                 df[key] = value
-                print(key, value)
             dfnc = df.to_xarray() 
             self.dataset = xr.concat([dfnc, self.dataset], dim='time')
         else: 
