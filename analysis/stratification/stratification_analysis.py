@@ -9,15 +9,20 @@ importlib.reload(wrl)
 
 import matplotlib.pyplot as plt
 
+import cmocean as cmo
+
+cmdict = cmo.tools.get_dict(cmo.cm.phase, N=6)
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=cmdict)
 
 # stem = "Px=6"
-stem = "nowind_Px=6"
+stem = "Px=6_diurnal_2"
+# stem = "Px=6_diurnal"
 zlevel = 0
 strat = wrl.WCRun(None, None)
 strat.read_from_file('../../output/stratified_model_%s.nc' % stem)
 
 unstrat = wrl.WCRun(None, None)
-unstrat.read_from_file('../../output/unstratified_model_%s.nc' % stem)
+unstrat.read_from_file('../..//unstratified_model_%s.nc' % stem)
 
 print(unstrat.dataset) #test
 print(strat.dataset)
@@ -33,9 +38,9 @@ ax = plt.gca()
 ax.grid(alpha=0.3)
 
 x,y = plot1d(strat, "photic_depth")
-plt.plot(x,y, '-', label="Stratified")
+plt.plot(x,y, '-', linewidth=3, alpha=0.6,  label="Stratified")
 x,y = plot1d(unstrat, "photic_depth")
-plt.plot(x,y, '-', label="Unstratified")
+plt.plot(x,y, '--', linewidth=3, alpha=0.6, label="Unstratified")
 
 ax.legend() 
 ax.set_ylim()
@@ -104,9 +109,8 @@ fig.savefig("Algae_%s.png" % stem)
 # axs[0] = self.add_time_series_to_axis('biomass2', label2, axs[0])
 # axs[0].legend()
 
-assert(False)
+
 
 
 # unstrat.add_profile_to_axis("C", plot_index, legend_ind, ax) # label="Stratified")
 
-plt.show()

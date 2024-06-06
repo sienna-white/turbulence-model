@@ -53,6 +53,19 @@ dt = 10 #60   # (seconds) size of time step
 seventy_two_hrs=259200
 M  = seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
+# Initialize thermocline based on tanh curve 
+base_temp = 15 
+dtemp = 1.5 
+centered_z = 2*z + H # center z vector around zero 
+stretch = 0.25 
+
+model = lib.WCModel(N=N,
+                    H=H, 
+                    dt=dt,
+                    N_time_steps=M,
+                    base_temp = 15) 
+
+
 read_from_input=False
 save_output=True
 plot=True
@@ -64,7 +77,7 @@ output=False
 # pressure = float(os.getenv("pressure"))
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
-isave = 300 #200 #00
+isave = 600 #200 #00
 
 
 #***************************************************************************
@@ -79,6 +92,14 @@ Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
 '''
 
+Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+                pmax = 0.07,# 5,     # maximum specific growth rate [1/hour]
+                ws = -1.4e-5,       # vertical velocity [m/s]
+                Hi = 40,            # half-saturation of light-limited growth [mu mol photons * m^2/s]
+                Li = 0.0001,        # specific loss rate [1/hour]
+                name = "Diatoms",
+                self_shading=True,
+                net=True)
 
 Algae2 = Algae_Species(k = 0.0034, 
                     pmax = 0.01, 
@@ -89,14 +110,7 @@ Algae2 = Algae_Species(k = 0.0034,
                     self_shading=True,
                     net=True)
 
-Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.3,# 5,     # maximum specific growth rate [1/hour]
-                ws = -1.4e-5,       # vertical velocity [m/s]
-                Hi = 40,            # half-saturation of light-limited growth [mu mol photons * m^2/s]
-                Li = 0.0001,        # specific loss rate [1/hour]
-                name = "Diatoms",
-                self_shading=True,
-                net=True)
+
 init = 1
 #***************************************************************************
 
@@ -120,76 +134,24 @@ if DIURNAL:
 
 ########################################################################################## 
 
-
-
-##########################################################################################
-
-
 # def save_at_end(depth_av_kz, ws, result):
 #     print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
 #     lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
 
 
-# Initial conditions for temperature profile
-delC   = 4       # Change in temperature at initial themocline [deg C]; set to zero for Unstratified Case
-zdelC  = -5      # Position of initial thermocline
-dzdelC = 4       # Thickness of initial thermocline 
-alpha  =  2.1e-4      # Thermal expansivity, set to zero for passive scalar case
-base_temp = 15   # Temperature of water column [deg C]
-
-##########################################################################################
-# Physical parameters 
-z0 = 0.01         # Bottom roughness [m]
-zb = 10*z0        # Bottom height [m]
-g  = 9.81         # Gravity [m/s^2]
-C_D = 0.0025      # Friction coefficient 
-SMALL = 1e-6      # Noise floor for turbulence quantities [m/s?]
-kappa = 0.4       # Von Karman constant
-nu = 1e-6         # Kinematic viscosity [m^2/s]
-rho0 = 1000       # Water density [kg/m^3]
-
-##########################################################################################
-# Mellor-Yamada closure parameters. All dimensionless --> no need to change  
-A1=0.92 # [-]
-A2=0.74 # [-]
-B1=16.6 # [-]
-B2=10.1 # [-]
-C1=0.08 # [-]
-E1=1.8  # [-]
-E2=1.33 # [-]
-E3=0.25 # [-]
-Sq=0.2  # [-]
 ##########################################################################################
 # Create shorthand beta for use in discretization 
 beta = (dt/dz**2)
 top = N-1
 
 # Create a vector of time steps 
-t = np.zeros((M))
-t[1:M] = dt * (np.arange(1,M) - 1)
+time = model.get_time_steps() 
+
+# np.zeros((M))
+# t[1:M] = dt * (np.arange(1,M) - 1)
 ##########################################################################################
 
-#***************************************************************************
-#   Define supporting functions
-#***************************************************************************
-def calculate_sm(gh):
-    num = B1**(-1/3) - A1*A2*gh*((B2-3*A2)*(1-6*A1/B1)-3*C1*(B2+6*A1))
-    dem = (1-3*A2*gh*(B2+6*A1))*(1-9*A1*A2*gh)
-    Sm  = num/dem
-    return Sm
 
-def calculate_sh(gh):
-    return A2*(1-6*A1/B1)/(1-3*A2*gh*(B2+6*A1))
-
-def calculate_brunt_vaisala(rho_, N_BV):
-    dpdz = np.zeros(N)
-    for i in range(0,top):
-        dpdz[i] = (rho_[i+1] - rho_[i])/dz     # Density gradient 
-    # dpdz = np.zeros(N)
-    # dpdz[0:top-1] = rho_[1:top] - rho_[0:top-1]/dz
-    N_BV = np.sqrt(abs((-g/rho0)* dpdz))
-    N_BV[top] = np.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
-    return N_BV
 #***************************************************************************
 
 '''
@@ -204,7 +166,7 @@ Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 #   Initialize arrays 
 #***************************************************************************
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] .. or zzTop .. just kidding
-z = np.array([(-H + dz*(i + 0.5)) for i in range(N)]) 
+z = model.get_z() # np.array([(-H + dz*(i + 0.5)) for i in range(N)]) 
 
 # Initalize arrays for temperature, density, Brunt-Vaisala frequency, velocity
 empty_arrays = [np.zeros(N) for i in range(5)]
@@ -231,271 +193,116 @@ SelfShade = SelfShading(z, N, background_turbidity, self_shading=True)
 #***************************************************************************
 #   Initialize temperature / strafication profile 
 #***************************************************************************
-# Thermocline will be half above midpoint, half below 
-half_height_thermocline = 0.5*dzdelC
-C = base_temp + delC*(z - zdelC + 0.5*dzdelC)/dzdelC
-#   For values of z BELOW the thermocline, set C = base_temp
-C[(z <= (zdelC - half_height_thermocline))] = base_temp
-#   For values of z ABOVE the thermocline, set C = base_temp + delC
-C[(z > (zdelC + half_height_thermocline))] = base_temp + delC
+C = model.temp_profile(dtemp=dtemp, stretch= stretch)
 
 # Calculate density profile 
-rho = rho0*(1 - alpha*(C - base_temp))  # Single scalar, linear equation of state
+rho = model.calculate_rho(C) # Single scalar, linear equation of state
 
 # Calculate Brunt-Vaisala frequency profile
-dpdz = (rho[1:top+1]-rho[0:top])/dz 
-N_BV[0:top]  = np.sqrt(abs((-g/rho0)*dpdz))
-N_BV[top] = np.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(dz)))
+N_BV = model.initialize_N_BV(N_BV, rho)
 
 #***************************************************************************
 #   Initialize velocity + turbulent parameters 
 #***************************************************************************
-Q2  = SMALL*np.ones(N)   # "seed" the turbulent field with small values, then let it evolve
-Q2L = SMALL*np.ones(N)
+# Q2, Q2L, L, Q, Sm, Sh, nu_t, Kq, Kz = model.initialize_arrays()
 
-# Initial length scale 
-L = -kappa*H*(z/H)*(1-(z/H)) # Q2L(n,1)/Q2(n,1) = 1 at initialization
-
-# Initialize empty arrays with size N
-empty_arrays = [np.zeros(N) for i in range(6)]
-Q, Sm, Sh, nu_t, Kq, Kz = empty_arrays
-
-# Initial U 
-U = U*0 # 0.1*(z + 2)
-Q = np.sqrt(Q2)
-
-# Initialize Gh (stratification correction)
-Gh = -((N_BV*L)/(Q + SMALL))**2
-Gh = np.clip(Gh, -0.28, 0.0233)
-
-# Calculate Sm, Sh, nu_t, Kq, Kz
-Sm = calculate_sm(Gh) 
-Sh = calculate_sh(Gh) 
-nu_t = (Sm * Q * L) + nu    # Turbulent diffusivity for Q2
-Kq = (Sq * Q * L) + nu      # Turbulent viscosity
-Kz = (Sh * Q * L) + nu
+Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV)
 
 ##########################################################################################
 # Initialize based on initial condition
 Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
-
 ##########################################################################################   
 
 
-
-def wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time):
+def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, time_index):
 
     '''
     Time-advancing algorithm. Steps a single timestep for c, rho, q2, q2l, l, kz, nu_t, kq
     All diffusion/viscous terms handled implicitly
     '''
-    #***************************************************************************
-    #  Initialize Tridiagonal Arrays 
-    #***************************************************************************
-    # Initialize tridiagonal arrays for C/temperature. dC is the RHS vector
-    aC, bC, cC, dC = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for turbulent kinetic energy
-    aQ2, bQ2, cQ2, dQ2 = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for Q^2 * L (turbulent kinetic energy times a lengthscale)
-    aQ2L, bQ2L, cQ2L, dQ2L = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for velocity
-    aU, bU, cU, dU = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for algae1 
-    aA1, bA1, cA1, dA1 = lib.initialize_abcd(N)
-
-    # Initialize tridiagonal arrays for algae 
-    aA2, bA2, cA2, dA2 = lib.initialize_abcd(N)
-
-    Px = np.zeros(N)
-    Q = np.sqrt(Q2)
-
-    # Update pressure forcing term for the current timestep
-    if T_Px == 0.0:
-        Px = Px + Px0 # Steady and constant forcing for now
-    else: 
-        Px = Px + Px0*math.cos((2*math.pi*t[m] - 3600*3)/(3600*T_Px)) 
+    #********************** TIME VARYING FORCINGS ***************************
+    Light =  lib.diurnal_light(time[time_index], 350, diurnal=DIURNAL)
+    Px  = model.get_pressure_at_timestep(time[time_index]) 
+    rho0 = 1000
+    Wstress= WIND * dt/(dz*rho0) 
+ 
+    Qp = np.sqrt(Q2p)
 
     # Update shear velocity at bottom boundary. Note explicit dependence on C_D
-    ustar = abs(U[0])*math.sqrt(C_D); 
+    ustar = model.calculate_ustar(Up[0]) 
 
     #***************************************************************************
     #   Update stability parameters 
     #***************************************************************************
-        
     # Update Gh (stratification correction)
-    Gh = -((N_BV*L)/(Q + SMALL))**2
-    Gh = np.clip(Gh, -0.28, 0.0233)
+    Gh = model.calculate_Gh(N_BVp, Lp, Qp)
 
-    # Calculate Sm, Sh, nu_t, Kq, Kz
-    Sm = calculate_sm(Gh) 
-    Sh = calculate_sh(Gh) 
-    nu_t = (Sm * Q * L) + nu # Turbulent diffusivity for Q2
-    Kq = (Sq * Q * L) + nu   # Turbulent viscosity
-    Kz = (Sh * Q * L) + nu
-    Kz = Kz.clip(SMALL,)     # Set floor on Kz so it's never zero 
+    # Update turbulent diffusivities
+    nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, Qp, Lp)
 
     #***************************************************************************
-    #   Store last time's step variables (f --> fp, q2 --> q2p, etc)
-    #***************************************************************************
-    Ap1 = algae1 
-    Ap2 = algae2
-    Cp = C
-    Q2p,Q2Lp  = Q2, Q2L
-    Lp, Kzp, Kqp, nu_tp = L, Kz, Kq, nu_t
-    N_BVp = N_BV
-    Up, Vp = U, V
-    
+    #   ADVANCE HYDRODYNAMIC VARIABLES
     #***************************************************************************
     #   Advance velocity (U,V)
-    #***************************************************************************
-    Wstress= WIND * dt/(dz*rho0) 
-    # Moved function itself into watercolumn_lib.py
-    aU, bU, cU, dU = lib.advance_velocity(Up, N, top, beta, nu_tp, Px, C_D, kappa, dt, W=Wstress)
-    
-    # Use Thomas algorithm to solve for U
-    U = lib.TDMA(aU, bU, cU, dU, N)
+    U = model.advance_velocity(Up, nu_tp, Px, W=None)
 
-    #********************** LIGHT FOR THIS TIME STEP ***************************
+    #   Advance TKE / Q2 
+    Q2 = model.advance_Q2(Q2p, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar) 
+
+    #   Advance Q2 * L     
+    Q2L = model.advance_Q2L(Q2p, Q2Lp, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar)
+
     #***************************************************************************
-    Light =  lib.diurnal_light(t[m], 350, diurnal=DIURNAL)
+    #   ADVANCE ALAGE 
+    #***************************************************************************
     light = SelfShade.calc_self_shading([Algae1, Algae2], I_in=Light)
-    #self_shading([Algae1, Algae2], I_in=light, turbidity=background_turbidity, self_shading=True)
-    #***************************************************************************
     
-    #***************************************************************************
-    #  [1]  Advance algae 1! 
-    #***************************************************************************
+    #  [1]  Advance algae 1!  ****************************************************
     ws    = Algae1.ws 
     wsdtdz  = abs(ws*dt)/dz
 
     gamma1 = Algae1.get_loss_and_growth(I_in = light, current_concentration = Ap1)
-    aA1, bA1, cA1, dA1 = lib.advance_algae(ws, wsdtdz, gamma1, beta, Kzp, Ap1, N, top, dt)
 
-    # Thomas algorithm to solve for C
-    algae1 = lib.TDMA(aA1, bA1, cA1, dA1, N)  
+    algae1 = model.advance_algae(ws, wsdtdz, gamma1, Kzp, Ap1)
+
     Algae1.c = algae1
 
-    #***************************************************************************
-    #   ADVANCE SECOND ALGAL SPECIES
-    #***************************************************************************
+    #  [2]  Advance algae 2!  ****************************************************
     ws    = Algae2.ws 
     wsdtdz  = abs(ws*dt)/dz
 
     gamma2 = Algae2.get_loss_and_growth(I_in = light, current_concentration = Ap2)
-    aA2, bA2, cA2, dA2 = lib.advance_algae(ws, wsdtdz, gamma2, beta, Kzp, Ap2, N, top, dt)
 
-    # Thomas algorithm to solve for C
-    algae2 = lib.TDMA(aA2, bA2, cA2, dA2, N)  
+    algae2 = model.advance_algae(ws, wsdtdz, gamma2, Kzp, Ap2)
+    
     Algae2.c = algae2
-
 
     #***************************************************************************
     #   Advance scalars/density (C, rho) 
-    #***************************************************************************
-    aC[1:top] = -0.5*beta*(Kzp[1:top] + Kzp[0:top-1])
-    bC[1:top] = 1 + 0.5*beta*(Kzp[2:top+1] + 2*Kzp[1:top] + Kzp[0:top-1])
-    cC[1:top] = -0.5*beta*(Kzp[1:top] + Kzp[2:top+1])
-    dC[1:top] = Cp[1:top]
-
-    # Bottom-Boundary: no flux for scalars
-    bC[0] = 1+0.5*beta*(Kzp[1] + Kzp[0])
-    cC[0] = -0.5*beta*(Kzp[1] + Kzp[0])
-    dC[0] =  Cp[0] 
-
-    # Top-Boundary: no flux for scalars
-    aC[top] = -0.5*beta*(Kzp[top] + Kzp[top-1])
-    bC[top] = 1+0.5*beta*(Kzp[top] + Kzp[top-1])
-    dC[top] = Cp[-1]
+    #**************************************************************************
+    aC, bC, cC, dC = model.advance_scalar(Kzp, Cp)
 
     # Thomas algorithm to solve for C
-    C =   lib.TDMA(aC, bC, cC, dC, N)
+    C =  Cp # lib.TDMA(aC, bC, cC, dC, N)
 
     # Update density and Brunt-Vaisala frequency
-    rho = rho0*(1-alpha*(C - base_temp))  
-    N_BV = calculate_brunt_vaisala(rho, N_BV)
-
-    #***************************************************************************
-    #   Advance TKE / Q2  
-    #***************************************************************************
-
-    # Dissipation is a size (N-2) vector used for the non-boundary terms in the Q2 equation 
-    diss = (2 * dt *(Q2p[1:top]**0.5))/(B1*Lp[1:top])
-    aQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[0:top-1])
-    bQ2[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss 
-    cQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1])
-    dQ2[1:top] = Q2p[1:top] + 0.25*beta*nu_tp[1:top]*(Up[2:top+1]-Up[0:top-1])**2 - dt*Kzp[1:top]*(N_BVp[1:top]**2)
-
-    # Bottom-Boundary Condition 
-    Q2bot = B1**(2/3) * ustar**2
-    bdryterm = 0.5*beta*Kqp[0]*Q2bot
-    dissipation = 2 * dt *((Q2p[0]**0.5)/(B1*Lp[0]))
-    bQ2[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + dissipation
-    cQ2[0] = -0.5*beta*(Kqp[1] + Kqp[0])
-    dQ2[0] = Q2p[0] + dt*((ustar**4)/nu_tp[0]) - dt*Kzp[0]*(N_BVp[0]**2) + bdryterm
-
-    # Top boundary condition
-    dissipation =  2 * dt *((Q2p[top]**0.5)/(B1*Lp[top]))
-    aQ2[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
-    bQ2[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kq[top-1]) + dissipation
-    dQ2[top] = Q2p[top] + 0.25*beta*nu_tp[top]*((Up[top] - Up[top-1])**2) -4*dt*Kzp[top]*(N_BVp[top]**2)
-
-    # TDMA to solve for q2
-    Q2 = lib.TDMA(aQ2, bQ2, cQ2, dQ2, N)
+    rho = model.calculate_rho(C) 
+    N_BV = model.calculate_brunt_vaisala(rho, N_BV)
 
     # Prevent negative values from causing instabilities
-    Q2[Q2 < 0] = SMALL
-
-    #***************************************************************************
-    #   Advance Q2 * L 
-    #***************************************************************************
-    diss = 2*dt*((Q2p[1:top]**0.5) / (B1*Lp[1:top]))*(1+E2*(Lp[1:top]/(kappa*abs(-H-z[1:top])))**2 \
-                                                      + E3*(Lp[1:top]/(kappa*abs(z[1:top])))**2)
-
-    aQ2L[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[0:top-1])
-    bQ2L[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss
-    cQ2L[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1]) 
-    dQ2L[1:top] = Q2Lp[1:top] + 0.25*beta*nu_tp[1:top]*E1*Lp[1:top] * (Up[2:top+1]-Up[0:top-1])**2 \
-                                - 2*dt*Lp[1:top]*E1*Kzp[1:top]*(N_BVp[1:top]**2)
-
-    # Bottom boundary Condition
-    q2lbot = B1**(2/3) * (ustar**2) * kappa * zb
-    bdryterm = 0.5*beta*Kqp[0]*q2lbot
-    diss =  2 * dt *(Q2p[0]**0.5)/(B1*Lp[0])*(1+E2*(Lp[0]/(kappa*abs(-H-z[0])))**2 + E3*(Lp[0]/(kappa*abs(z[0])))**2)
-    bQ2L[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + diss
-    cQ2L[0] = -0.5*beta*(Kqp[1] + Kqp[0])
-    dQ2L[0] = Q2Lp[0] + dt*((ustar**4)/nu_tp[0])*E1*Lp[0] - dt*Lp[0]*E1*Kzp[0]*(N_BVp[0]**2) + bdryterm
-
-    # Top boundary condition
-    dissipation =  2 * dt *(Q2p[top]**0.5)/(B1*Lp[top])*(1+E2*(Lp[top]/(kappa*abs(-H-z[top])))**2 \
-                                                  + E3*(Lp[top]/(kappa*abs(z[top])))**2)
-    aQ2L[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
-    bQ2L[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kqp[top-1]) + dissipation # Are we using kq or kqp here?
-    dQ2L[top] = Q2Lp[top] + 0.25*beta*nu_tp[top]*E1*Lp[top]*(Up[top]-Up[top-1])**2 - 2*dt*Lp[-1]*E1*Kzp[top]*(N_BVp[top]**2)
-    
-    # TDMA to solve for q2
-    Q2L = lib.TDMA(aQ2L, bQ2L, cQ2L, dQ2L, N)
+    Q2 = model.add_noise_floor(Q2) 
 
     # Prevent negative values in Q2L 
-    Q2L[Q2L < 0] = SMALL
+    Q2L = model.add_noise_floor(Q2L) 
 
     #  Calculate turbulent lengthscale (l) and mixing coefficients (kz, nu_t, kq)
     Q = np.sqrt(Q2)
-    L = Q2L/(Q2 + SMALL)
 
-    # Check length scale 
-    ind = ((L**2)*(N_BV**2)) > (0.281*Q2) # Vectorized if-statement 
-    if sum(ind) > 0: 
-        Q2L[ind] = Q2[ind]*np.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
-        L[ind] = Q2L[ind] / Q2[ind]
-    L[abs(L) <= zb] = zb
+    # Get length scale by dividing Q2L by Q2 and checking for stability 
+    L = model.calculate_lengthscale(Q2, Q2L, N_BV)
 
-    Kq = Sq*Q*L + nu
-    nu_t = Sm*Q*L + nu
-    Kz = Sh*Q*L + nu   
+    # Calculate turbulent diffusivities 
+    nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, np.sqrt(Q2), L)
 
     if (time%isave) == 0:
         # Pack data into dictionary structure before saving 
@@ -523,7 +330,7 @@ for m in range(1,M):
     #     print('Time step = %d' % m)
 
     # Advance the model by one timestep
-    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time=m) 
+    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time_index=m) 
 
     # Unpack output
     U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2 = output
@@ -534,7 +341,7 @@ output=False
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL),
               "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 RUN_TEST.save_run_info(**attributes) 
-RUN_TEST.save_dataset("unstratified_model_Px=6_diurnal.nc")
+RUN_TEST.save_dataset("stratified_model_Px=6_diurnal_2.nc")
 
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 

@@ -48,6 +48,7 @@ variable2units['biomass'] = r'10$^6$ cells'
 variable2units['net_growth'] = r'hour$^{-1}$'
 
 
+
 class WCRun:
     def __init__(self, N, z, save_output=True):
         self.N = N
