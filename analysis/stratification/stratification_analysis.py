@@ -15,14 +15,17 @@ cmdict = cmo.tools.get_dict(cmo.cm.phase, N=6)
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=cmdict)
 
 # stem = "Px=6"
-stem = "Px=6_diurnal_2"
+
+
+stem = "0T_0W_0D"
+title ="no tidal, no wind, no diurnal"
 # stem = "Px=6_diurnal"
 zlevel = 0
 strat = wrl.WCRun(None, None)
 strat.read_from_file('../../output/stratified_model_%s.nc' % stem)
 
-unstrat = wrl.WCRun(None, None)
-unstrat.read_from_file('../..//unstratified_model_%s.nc' % stem)
+unstrat = wrl.WCRun(None, None) 
+unstrat.read_from_file('../../output/unstratified_model_%s.nc' % stem)
 
 print(unstrat.dataset) #test
 print(strat.dataset)
@@ -44,7 +47,9 @@ plt.plot(x,y, '--', linewidth=3, alpha=0.6, label="Unstratified")
 
 ax.legend() 
 ax.set_ylim()
-fig.savefig("photic_depth_%s.png" % stem)
+ax.set_title(title)
+fig.tight_layout()
+fig.savefig("photic_depth_%s.png" % title)
 
 
 ########################################
@@ -66,7 +71,9 @@ plt.plot(x,y, '--', color='crimson', linewidth=3, label="HAB biomass (unstratifi
 
 ax.legend() 
 ax.set_ylim()
-fig.savefig("biomass_%s.png" % stem)
+ax.set_title(title)
+fig.tight_layout()
+fig.savefig("biomass_%s.png" % title)
 
 ########################################
 # fig = plt.figure(figsize=(8,4))
@@ -85,20 +92,22 @@ fig, axs = plt.subplots(nrows=4, ncols=2, sharex='row', figsize=(10, 20))
 axs = axs.ravel()
 
 for i,variable in enumerate(plot_var): 
-    fig, _ = strat.plot_profiles(variable, skip=11, passed_string='(stratified)', show=False, ax=axs[i*2])
-    fig, _ = unstrat.plot_profiles(variable, skip=11, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
+    fig, _ = strat.plot_profiles(variable, skip=1, passed_string='(stratified)', show=False, ax=axs[i*2])
+    fig, _ = unstrat.plot_profiles(variable, skip=1, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
 
-
-fig.savefig("Composite_%s.png" % stem)
+fig.suptitle(title)
+fig.savefig("Composite_%s.png" % title)
 
 plot_var = [ "algae1","algae2"] #, , , "algae1"]
 
 fig, axs = plt.subplots(nrows=2, ncols=2, sharex='row', figsize=(10, 10))
 axs = axs.ravel()
 for i,variable in enumerate(plot_var): 
-    fig, ax = strat.plot_profiles(variable, skip=21, passed_string='(stratified)', show=False, ax=axs[i*2])
-    fig, ax = unstrat.plot_profiles(variable, skip=21, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
-fig.savefig("Algae_%s.png" % stem)
+    fig, ax = strat.plot_profiles(variable, skip=1, passed_string='(stratified)', show=False, ax=axs[i*2])
+    fig, ax = unstrat.plot_profiles(variable, skip=1, passed_string='(unstratified)', show=False , ax=axs[i*2+1])
+fig.suptitle(title)
+fig.tight_layout()
+fig.savefig("Algae_%s.png" % title)
 
 
 # Add biomass 

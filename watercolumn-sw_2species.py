@@ -50,26 +50,54 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-seventy_two_hrs=259200
-M  = seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
+# seventy_two_hrs=#25920 
+ten_days = int(10*24*3600/dt)*2
+M  = ten_days# seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
 # Initialize thermocline based on tanh curve 
 base_temp = 15 
 dtemp = 1.5 
-centered_z = 2*z + H # center z vector around zero 
 stretch = 0.25 
 
-model = lib.WCModel(N=N,
-                    H=H, 
-                    dt=dt,
-                    N_time_steps=M,
-                    base_temp = 15) 
+# Pressure Forcing -> Need to modify to allow for time variable Px.
+Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
+T_Px = 0 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
+background_turbidity =  0.0016
+I_in = 350 
+init = 1
 
+stratified = False 
+
+Tidal = False 
+WIND = True 
+DIURNAL = False #  
+
+out_fn = "unstratified_model_0T_1W_0D.nc"
+
+if Tidal:
+    T_Px = 12
+else:
+    T_Px = 0 
+
+if WIND:
+    Wind = 2 #2 
+else:
+    Wind = 0 
+#***************************************************************************
 read_from_input=False
 save_output=True
 plot=True
 output=False
+
+#***************************************************************************
+#   Algae parameters
+#***************************************************************************
+
+'''
+Diatoms ws = -1.38e-5 m/s
+Cyanobacteria = 1.38e-4 m/s
+'''
 
 # output_csv=os.getenv("output_csv")
 # ws = float(os.getenv("ws"))
@@ -79,19 +107,16 @@ output=False
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 600 #200 #00
 
+model = lib.WCModel(N=N,
+                    H=H, 
+                    dt=dt,
+                    N_time_steps=M,
+                    base_temp = 15) 
+
 
 #***************************************************************************
-#   Algae parameters
 #***************************************************************************
-background_turbidity =  0.0016
-I_in = 350 
-DIURNAL = True #  
-
-'''
-Diatoms ws = -1.38e-5 m/s
-Cyanobacteria = 1.38e-4 m/s
-'''
-
+#   
 Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                 pmax = 0.07,# 5,     # maximum specific growth rate [1/hour]
                 ws = -1.4e-5,       # vertical velocity [m/s]
@@ -111,15 +136,12 @@ Algae2 = Algae_Species(k = 0.0034,
                     net=True)
 
 
-init = 1
 #***************************************************************************
 
-# Pressure Forcing -> Need to modify to allow for time variable Px.
-Px0 = 2e-6 # 2e-6  # Magnitude on pressure gradient forcing
-T_Px = 0#12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+model.set_pressure_parameters(Px0, T_Px)
 
 rhoA = 1.23  # kg / m^3
-Wind = 2 
+
 # u_star =  # m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
 WIND = (0.05 * Wind)**2 * rhoA  # this is rho * u*^2
 RUN_INFO='pressure=%2.2e_pmax1=%2.2e_pmax2=%2.2e_Wind=%2.1e' % (Px0, Algae1.pmax, Algae2.pmax, WIND)
@@ -138,20 +160,6 @@ if DIURNAL:
 #     print("Depth averaged turbulent dissipation = %f" % depth_av_kz)
 #     lib.save_output(output_csv, depth_av_kz, ws, result, header=["depth_averaged_kz", "ws", "output"])
 
-
-##########################################################################################
-# Create shorthand beta for use in discretization 
-beta = (dt/dz**2)
-top = N-1
-
-# Create a vector of time steps 
-time = model.get_time_steps() 
-
-# np.zeros((M))
-# t[1:M] = dt * (np.arange(1,M) - 1)
-##########################################################################################
-
-
 #***************************************************************************
 
 '''
@@ -166,11 +174,10 @@ Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 #   Initialize arrays 
 #***************************************************************************
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] .. or zzTop .. just kidding
-z = model.get_z() # np.array([(-H + dz*(i + 0.5)) for i in range(N)]) 
+z = model.get_z() 
 
-# Initalize arrays for temperature, density, Brunt-Vaisala frequency, velocity
-empty_arrays = [np.zeros(N) for i in range(5)]
-C, rho, N_BV, U, V = empty_arrays
+# Create a vector of time steps 
+Times = model.get_time_steps() 
 
 # Intialize an object for saving profiles throughout the model run
 RUN_TEST= wrl.WCRun(N, z, save_output=save_output) 
@@ -179,11 +186,9 @@ RUN_TEST= wrl.WCRun(N, z, save_output=save_output)
 #   Initialize algae  
 #***************************************************************************
 Algae1.set_initial_concentration(N, init=init, opt='constant')
-Algae1.save_total_mass()
 Algae1.set_vertical_grid(H, N, dz)
 
 Algae2.set_initial_concentration(N, init=init, opt='constant')
-Algae2.save_total_mass()
 Algae2.set_vertical_grid(H, N, dz)
 
 algae1 = Algae1.c
@@ -193,22 +198,23 @@ SelfShade = SelfShading(z, N, background_turbidity, self_shading=True)
 #***************************************************************************
 #   Initialize temperature / strafication profile 
 #***************************************************************************
-C = model.temp_profile(dtemp=dtemp, stretch= stretch)
+C = model.temp_profile(dtemp=dtemp, stretch= stretch, STRATIFIED=stratified)
 
 # Calculate density profile 
 rho = model.calculate_rho(C) # Single scalar, linear equation of state
 
 # Calculate Brunt-Vaisala frequency profile
-N_BV = model.initialize_N_BV(N_BV, rho)
+N_BV = model.calculate_brunt_vaisala(rho)
 
 #***************************************************************************
 #   Initialize velocity + turbulent parameters 
 #***************************************************************************
-# Q2, Q2L, L, Q, Sm, Sh, nu_t, Kq, Kz = model.initialize_arrays()
+
+# Initalize velocity
+U = np.zeros(N) 
 
 Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV)
 
-##########################################################################################
 # Initialize based on initial condition
 Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
 ##########################################################################################   
@@ -221,8 +227,8 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     All diffusion/viscous terms handled implicitly
     '''
     #********************** TIME VARYING FORCINGS ***************************
-    Light =  lib.diurnal_light(time[time_index], 350, diurnal=DIURNAL)
-    Px  = model.get_pressure_at_timestep(time[time_index]) 
+    Light =  lib.diurnal_light(Times[time_index], 350, diurnal=DIURNAL)
+    Px  = model.get_pressure_at_timestep(Times[time_index]) 
     rho0 = 1000
     Wstress= WIND * dt/(dz*rho0) 
  
@@ -235,16 +241,16 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     #   Update stability parameters 
     #***************************************************************************
     # Update Gh (stratification correction)
-    Gh = model.calculate_Gh(N_BVp, Lp, Qp)
+    # Gh = model.calculate_Gh(N_BVp, Lp, Qp)
 
     # Update turbulent diffusivities
-    nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, Qp, Lp)
+    # nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, Qp, Lp)
 
     #***************************************************************************
     #   ADVANCE HYDRODYNAMIC VARIABLES
     #***************************************************************************
     #   Advance velocity (U,V)
-    U = model.advance_velocity(Up, nu_tp, Px, W=None)
+    U = model.advance_velocity(Up, nu_tp, Px, W=Wstress)
 
     #   Advance TKE / Q2 
     Q2 = model.advance_Q2(Q2p, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar) 
@@ -257,42 +263,33 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     #***************************************************************************
     light = SelfShade.calc_self_shading([Algae1, Algae2], I_in=Light)
     
-    #  [1]  Advance algae 1!  ****************************************************
-    ws    = Algae1.ws 
-    wsdtdz  = abs(ws*dt)/dz
-
+    #*********** Advance algae 1!  *********************************************
     gamma1 = Algae1.get_loss_and_growth(I_in = light, current_concentration = Ap1)
-
-    algae1 = model.advance_algae(ws, wsdtdz, gamma1, Kzp, Ap1)
-
+    algae1 = model.advance_algae(Algae1.ws, gamma1, Kzp, Ap1)
     Algae1.c = algae1
 
-    #  [2]  Advance algae 2!  ****************************************************
-    ws    = Algae2.ws 
-    wsdtdz  = abs(ws*dt)/dz
-
+    #*********** Advance algae 2!  *********************************************
     gamma2 = Algae2.get_loss_and_growth(I_in = light, current_concentration = Ap2)
-
-    algae2 = model.advance_algae(ws, wsdtdz, gamma2, Kzp, Ap2)
-    
+    algae2 = model.advance_algae(Algae2.ws, gamma2, Kzp, Ap2)
     Algae2.c = algae2
 
     #***************************************************************************
-    #   Advance scalars/density (C, rho) 
+    #   Advance temperature
     #**************************************************************************
-    aC, bC, cC, dC = model.advance_scalar(Kzp, Cp)
-
     # Thomas algorithm to solve for C
-    C =  Cp # lib.TDMA(aC, bC, cC, dC, N)
+    if stratified:
+        C  = Cp
+    else: 
+        aC, bC, cC, dC = model.advance_scalar(Kzp, Cp)
+        C =  lib.TDMA(aC, bC, cC, dC, N)
 
+    #***************************************************************************
     # Update density and Brunt-Vaisala frequency
     rho = model.calculate_rho(C) 
-    N_BV = model.calculate_brunt_vaisala(rho, N_BV)
+    N_BV = model.calculate_brunt_vaisala(rho)
 
     # Prevent negative values from causing instabilities
     Q2 = model.add_noise_floor(Q2) 
-
-    # Prevent negative values in Q2L 
     Q2L = model.add_noise_floor(Q2L) 
 
     #  Calculate turbulent lengthscale (l) and mixing coefficients (kz, nu_t, kq)
@@ -302,9 +299,9 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     L = model.calculate_lengthscale(Q2, Q2L, N_BV)
 
     # Calculate turbulent diffusivities 
-    nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, np.sqrt(Q2), L)
+    nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, Q, L)
 
-    if (time%isave) == 0:
+    if (time_index%isave) == 0:
         # Pack data into dictionary structure before saving 
         data2d = {'U': U, 'C': C, 'Q2': Q2, 
                 'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
@@ -315,8 +312,8 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
         else:
             photic_depth = z[light>(0.1 * Light)][0]
         data1d = {'biomass1': sum(algae1), 'biomass2' : sum(algae2), "photic_depth": photic_depth}
-        RUN_TEST.save_2d_data(time, **data2d)
-        RUN_TEST.save_1d_data(time, **data1d)
+        RUN_TEST.save_2d_data(Times[time_index], **data2d)
+        RUN_TEST.save_1d_data(Times[time_index], **data1d)
 
     return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2]
 
@@ -326,7 +323,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
 #***************************************************************************
 for m in range(1,M):
    
-    # if m%200 == 0:
+    # if m%1000 == 0:
     #     print('Time step = %d' % m)
 
     # Advance the model by one timestep
@@ -341,7 +338,7 @@ output=False
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL),
               "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 RUN_TEST.save_run_info(**attributes) 
-RUN_TEST.save_dataset("stratified_model_Px=6_diurnal_2.nc")
+RUN_TEST.save_dataset(out_fn)
 
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 

@@ -46,7 +46,9 @@ variable2units['net_growth'] = r'hour$^{-1}$'
 
 def check_initial_condition(Px0):
     csv_name='initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
-    if ~os.path.isfile(csv_name):
+    if os.path.isfile(csv_name): 
+        pass
+    else:
         csv_name='initial_condition/initial_condition-pressure=2.00e-07.csv' 
         print("No initial condition for this pressure gradient --> using default!")
 
@@ -165,7 +167,6 @@ class SavedProfiles:
         diurnal = [diurnal_light(t, self.I_in, True) for t in time]
         ax2 = axs[2].twinx()
         axs[2].plot(hours[0:-2], diurnal[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
-        print(hours, diurnal)
         axs[2].plot([],[], 'o', label='Tidal forcing', alpha = 0.4, linewidth=3, color='skyblue')
         if self.T_Px != 0:
             pressure = [self.Px0*math.cos(2*math.pi*t/(3600*self.T_Px)) for t in time]
@@ -367,11 +368,15 @@ class WCModel():
         self.dt = dt
         self.M = N_time_steps
         self.base_temp = base_temp
-        print("Model time = %2.2f hours" % (self.M*dt/3600))
+        print("Model run time set to %2.2f hours" % (self.M*dt/3600))
         
         # Create shorthand beta for use in discretization 
         self.beta = (dt/self.dz**2)
         self.top =  N-1
+    
+    def set_pressure_parameters(self, Px0, T_Px):
+        self.Px0 = Px0
+        self.T_Px = T_Px
 
     def get_time_steps(self):
         # Create a vector of time steps 
@@ -382,10 +387,15 @@ class WCModel():
     def get_z(self):
         return np.array([(-self.H + self.dz*(i + 0.5)) for i in range(self.N)]) 
 
-    def temp_profile(self, dtemp, stretch):
+    def temp_profile(self, dtemp, stretch, STRATIFIED):
         z = self.get_z() 
-        centered_z = 2*z + self.H # center z vector around zero 
-        return np.tanh(centered_z * stretch)*dtemp + self.base_temp
+        if STRATIFIED:
+            print("Initializing stratified temperature profile...")
+            centered_z = 2*z + self.H # center z vector around zero 
+            return np.tanh(centered_z * stretch)*dtemp + self.base_temp
+        else: 
+            print("Initializing constant temperature profile...")
+            return np.zeros(self.N) + self.base_temp
     
     def calculate_rho(self, C):
         rho = rho0*(1 - alpha*(C - self.base_temp))  # Single scalar, linear equation of state
@@ -400,7 +410,7 @@ class WCModel():
         Sm, Sh, nu_t, Kq, Kz = empty_arrays
         return Q2, Q2L, L, Q, Sm, Sh, nu_t, Kq, Kz
     
-    def initialize_N_BV(self, N_BV, rho):
+    def initialize_N_BV(self, rho):
         top = self.top 
         dpdz = (rho[1:top+1]-rho[0:top])/ self.dz 
         N_BV[0:top]  = np.sqrt(abs((-g/rho0)*dpdz))
@@ -456,7 +466,8 @@ class WCModel():
     def calculate_sh(self, gh):
         return A2*(1-6*A1/B1)/(1-3*A2*gh*(B2+6*A1))
 
-    def calculate_brunt_vaisala(self, rho, N_BV):
+    def calculate_brunt_vaisala(self, rho):
+        N_BV = np.zeros(self.N)
         dpdz = np.zeros(self.N)
         for i in range(0,self.top):
             dpdz[i] = (rho[i+1] - rho[i])/self.dz     # Density gradient 
@@ -497,8 +508,9 @@ class WCModel():
         return U
 
 
-    def advance_algae(self, ws, wsdtdz, gamma, Kzp, Ap):
+    def advance_algae(self, ws, gamma, Kzp, Ap):
         aA, bA, cA, dA = initialize_abcd(self.N)
+        wsdtdz = abs(ws* self.dt)/self.dz
         top = self.top
         beta = self.beta 
         dt  = self.dt 
@@ -554,8 +566,8 @@ class WCModel():
         dC[1:top] = Cp[1:top]
 
         # Bottom-Boundary: no flux for scalars
-        bC[0] = 1+0.5*beta*(Kzp[1] + Kzp[0])
-        cC[0] = -0.5*beta*(Kzp[1] + Kzp[0])
+        bC[0] = 1 + beta/2*(Kzp[1] + Kzp[0])
+        cC[0] = -beta/2*(Kzp[1] + Kzp[0])
         dC[0] =  Cp[0] 
 
         # Top-Boundary: no flux for scalars
@@ -604,6 +616,8 @@ class WCModel():
         top = self.top
         beta = self.beta 
         dt  = self.dt 
+        z = self.get_z()
+        H = self.H
 
         diss = 2*dt*((Q2p[1:top]**0.5) / (B1*Lp[1:top]))*(1+E2*(Lp[1:top]/(kappa*abs(-H-z[1:top])))**2 \
                                                       + E3*(Lp[1:top]/(kappa*abs(z[1:top])))**2)

@@ -61,6 +61,10 @@ class WCRun:
 
     def read_from_file(self, filename):
         self.dataset = xr.open_dataset(filename)
+        # df = self.dataset.to_dataframe()
+        # df = df.dropna(how="all")
+        # print(df)
+        # assert(False)
         self.z = self.dataset.z.values
 
     def save_1d_data(self, time, **kwargs):
