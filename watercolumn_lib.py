@@ -64,7 +64,20 @@ def check_initial_condition(Px0):
     N_BV = ic['N_BV'].values
     U = ic['U'].values 
     return Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U
-   
+
+def air_temperature(t, max_temp, diurnal):
+    '''Function to generate estimate of heat flux according to diurnal cycle.
+     Inputs: t (in seconds); flux_max (maximum heat intensity/ light at noon)'''
+    if diurnal:
+        hour = t/3600
+        period = (2*np.pi)/24
+        phase_shift = 12 
+        temp = max_temp * np.cos(period * (hour - phase_shift))
+        temp = temp.clip(min=18) # During night, light is zero
+        return temp
+    else:
+        return temp
+    
 
 def diurnal_light(t, I_max, diurnal):
     '''Function to generate estimate of light according to diurnal cycle.
@@ -164,9 +177,9 @@ class SavedProfiles:
         # Add forcings
         time = self.saved_profiles['time'][0:] 
         hours = self.seconds2hours(time)
-        diurnal = [diurnal_light(t, self.I_in, True) for t in time]
+        diurnal_light = [diurnal_light(t, self.I_in, True) for t in time]
         ax2 = axs[2].twinx()
-        axs[2].plot(hours[0:-2], diurnal[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
+        axs[2].plot(hours[0:-2], diurnal_light[0:-2], label='Diurnal light', linewidth = 3, color='yellow')
         axs[2].plot([],[], 'o', label='Tidal forcing', alpha = 0.4, linewidth=3, color='skyblue')
         if self.T_Px != 0:
             pressure = [self.Px0*math.cos(2*math.pi*t/(3600*self.T_Px)) for t in time]
@@ -373,6 +386,7 @@ class WCModel():
         # Create shorthand beta for use in discretization 
         self.beta = (dt/self.dz**2)
         self.top =  N-1
+        self.z = self.get_z()
     
     def set_pressure_parameters(self, Px0, T_Px):
         self.Px0 = Px0
@@ -387,9 +401,9 @@ class WCModel():
     def get_z(self):
         return np.array([(-self.H + self.dz*(i + 0.5)) for i in range(self.N)]) 
 
-    def temp_profile(self, dtemp, stretch, STRATIFIED):
+    def temp_profile(self, dtemp, stretch, STRATIFIED_INIT_TEMP):
         z = self.get_z() 
-        if STRATIFIED:
+        if STRATIFIED_INIT_TEMP:
             print("Initializing stratified temperature profile...")
             centered_z = 2*z + self.H # center z vector around zero 
             return np.tanh(centered_z * stretch)*dtemp + self.base_temp
@@ -413,6 +427,7 @@ class WCModel():
     def initialize_N_BV(self, rho):
         top = self.top 
         dpdz = (rho[1:top+1]-rho[0:top])/ self.dz 
+        N_BV = np.zeros(self.N,)
         N_BV[0:top]  = np.sqrt(abs((-g/rho0)*dpdz))
         N_BV[top] = np.sqrt(abs((-g/rho0)*(rho[top] - rho[top-1])/(self.dz)))
         return N_BV
@@ -467,6 +482,9 @@ class WCModel():
         return A2*(1-6*A1/B1)/(1-3*A2*gh*(B2+6*A1))
 
     def calculate_brunt_vaisala(self, rho):
+        # when the density gradient is positive at night, things get 
+        # funky b/c dp/dz should be reversing sign -- taking abs is causing 
+        # our issue 
         N_BV = np.zeros(self.N)
         dpdz = np.zeros(self.N)
         for i in range(0,self.top):
@@ -475,7 +493,13 @@ class WCModel():
         N_BV[self.top] = np.sqrt(abs((-g/rho0)*(rho[self.top] - rho[self.top-1])/(self.dz)))
         return N_BV
 
-  
+    
+    def calculate_photic_depth(self, Light, light_at_z):
+        if Light<1:
+            photic_depth = 0
+        else:
+            photic_depth = self.z[light_at_z>(0.1 * Light)][0]
+        return photic_depth
 
     # **************************************************************************
 
@@ -553,7 +577,7 @@ class WCModel():
         return A
 
 
-    def advance_scalar(self, Kzp, Cp):
+    def advance_scalar(self, Kzp, Cp, heat_flux):
         # Initialize tridiagonal arrays for C/temperature. dC is the RHS vector
         aC, bC, cC, dC = initialize_abcd(self.N)
         top = self.top
@@ -573,8 +597,9 @@ class WCModel():
         # Top-Boundary: no flux for scalars
         aC[top] = -0.5*beta*(Kzp[top] + Kzp[top-1])
         bC[top] = 1+0.5*beta*(Kzp[top] + Kzp[top-1])
-        dC[top] = Cp[-1]
-    
+        dC[top] = Cp[-1] + heat_flux # TEMP test
+        
+        # print('heat flux= ', heat_flux * self.dz )
         return aC, bC, cC, dC
     
     def advance_Q2(self, Q2p, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar):
@@ -588,7 +613,7 @@ class WCModel():
         diss = (2 * dt *(Q2p[1:top]**0.5))/(B1*Lp[1:top])
         aQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[0:top-1])
         bQ2[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss 
-        cQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1])
+        cQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1])                                  # buoyancy production term  (should be negative such that this term is adding TKE when density is unstable)
         dQ2[1:top] = Q2p[1:top] + 0.25*beta*nu_tp[1:top]*(Up[2:top+1]-Up[0:top-1])**2 - dt*Kzp[1:top]*(N_BVp[1:top]**2)
 
         # Bottom-Boundary Condition 
@@ -654,6 +679,8 @@ class WCModel():
         L = Q2L/(Q2 + SMALL)
         # Check length scale 
         ind = ((L**2)*(N_BV**2)) > (0.281*Q2) # Vectorized if-statement 
+        # Double check this if-statement doesn't get executed when 
+        # NBV^2 is negative ! 
         if sum(ind) > 0: 
             Q2L[ind] = Q2[ind]*np.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
             L[ind] = Q2L[ind] / Q2[ind]
