@@ -433,7 +433,8 @@ class WCModel():
         return N_BV
 
     def calculate_Gh(self, N_BV, L, Q):
-        Gh = -((N_BV*L)/(Q + SMALL))**2
+        # Gh = -((N_BV*L)/(Q + SMALL))**2
+        Gh = -(N_BV*L**2)/(Q + SMALL)**2
         Gh = np.clip(Gh, -0.28, 0.0233)
         return Gh 
     
@@ -489,8 +490,10 @@ class WCModel():
         dpdz = np.zeros(self.N)
         for i in range(0,self.top):
             dpdz[i] = (rho[i+1] - rho[i])/self.dz     # Density gradient 
-        N_BV = np.sqrt(abs((-g/rho0)* dpdz))
-        N_BV[self.top] = np.sqrt(abs((-g/rho0)*(rho[self.top] - rho[self.top-1])/(self.dz)))
+        N_BV = (-g/rho0)* dpdz
+        N_BV[self.top] = (-g/rho0)*(rho[self.top] - rho[self.top-1])/(self.dz)
+        # N_BV = np.sqrt(abs((-g/rho0)* dpdz))
+        # N_BV[self.top] = np.sqrt(abs((-g/rho0)*(rho[self.top] - rho[self.top-1])/(self.dz)))
         return N_BV
 
     
@@ -614,7 +617,7 @@ class WCModel():
         aQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[0:top-1])
         bQ2[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss 
         cQ2[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1])                                  # buoyancy production term  (should be negative such that this term is adding TKE when density is unstable)
-        dQ2[1:top] = Q2p[1:top] + 0.25*beta*nu_tp[1:top]*(Up[2:top+1]-Up[0:top-1])**2 - dt*Kzp[1:top]*(N_BVp[1:top]**2)
+        dQ2[1:top] = Q2p[1:top] + 0.25*beta*nu_tp[1:top]*(Up[2:top+1]-Up[0:top-1])**2 - dt*Kzp[1:top]*(N_BVp[1:top])
 
         # Bottom-Boundary Condition 
         Q2bot = B1**(2/3) * ustar**2
@@ -622,13 +625,13 @@ class WCModel():
         dissipation = 2 * dt *((Q2p[0]**0.5)/(B1*Lp[0]))
         bQ2[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + dissipation
         cQ2[0] = -0.5*beta*(Kqp[1] + Kqp[0])
-        dQ2[0] = Q2p[0] + dt*((ustar**4)/nu_tp[0]) - dt*Kzp[0]*(N_BVp[0]**2) + bdryterm
+        dQ2[0] = Q2p[0] + dt*((ustar**4)/nu_tp[0]) - dt*Kzp[0]*(N_BVp[0]) + bdryterm
 
         # Top boundary condition
         dissipation =  2 * dt *((Q2p[top]**0.5)/(B1*Lp[top]))
         aQ2[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
         bQ2[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kqp[top-1]) + dissipation # sw note --> fixed typo w kqp
-        dQ2[top] = Q2p[top] + 0.25*beta*nu_tp[top]*((Up[top] - Up[top-1])**2) -4*dt*Kzp[top]*(N_BVp[top]**2)
+        dQ2[top] = Q2p[top] + 0.25*beta*nu_tp[top]*((Up[top] - Up[top-1])**2) -4*dt*Kzp[top]*(N_BVp[top])
         
         Q2  = TDMA(aQ2, bQ2, cQ2, dQ2, self.N) 
 
@@ -651,7 +654,7 @@ class WCModel():
         bQ2L[1:top] = 1 + 0.5*beta*(Kqp[2:top+1] + 2*Kqp[1:top] + Kqp[0:top-1]) + diss
         cQ2L[1:top] = -0.5*beta*(Kqp[1:top] + Kqp[2:top+1]) 
         dQ2L[1:top] = Q2Lp[1:top] + 0.25*beta*nu_tp[1:top]*E1*Lp[1:top] * (Up[2:top+1]-Up[0:top-1])**2 \
-                                    - 2*dt*Lp[1:top]*E1*Kzp[1:top]*(N_BVp[1:top]**2)
+                                    - 2*dt*Lp[1:top]*E1*Kzp[1:top]*(N_BVp[1:top])
 
         # Bottom boundary Condition
         q2lbot = B1**(2/3) * (ustar**2) * kappa * zb
@@ -659,14 +662,14 @@ class WCModel():
         diss =  2 * dt *(Q2p[0]**0.5)/(B1*Lp[0])*(1+E2*(Lp[0]/(kappa*abs(-H-z[0])))**2 + E3*(Lp[0]/(kappa*abs(z[0])))**2)
         bQ2L[0] = 1+0.5*beta*(Kqp[1] + Kqp[0]) + diss
         cQ2L[0] = -0.5*beta*(Kqp[1] + Kqp[0])
-        dQ2L[0] = Q2Lp[0] + dt*((ustar**4)/nu_tp[0])*E1*Lp[0] - dt*Lp[0]*E1*Kzp[0]*(N_BVp[0]**2) + bdryterm
+        dQ2L[0] = Q2Lp[0] + dt*((ustar**4)/nu_tp[0])*E1*Lp[0] - dt*Lp[0]*E1*Kzp[0]*(N_BVp[0]) + bdryterm
 
         # Top boundary condition
         dissipation =  2 * dt *(Q2p[top]**0.5)/(B1*Lp[top])*(1+E2*(Lp[top]/(kappa*abs(-H-z[top])))**2 \
                                                     + E3*(Lp[top]/(kappa*abs(z[top])))**2)
         aQ2L[top] = -0.5*beta*(Kqp[top] + Kqp[top-1])
         bQ2L[top] = 1+0.5*beta*(Kqp[top] + 2*Kqp[top] + Kqp[top-1]) + dissipation # Are we using kq or kqp here?
-        dQ2L[top] = Q2Lp[top] + 0.25*beta*nu_tp[top]*E1*Lp[top]*(Up[top]-Up[top-1])**2 - 2*dt*Lp[-1]*E1*Kzp[top]*(N_BVp[top]**2)
+        dQ2L[top] = Q2Lp[top] + 0.25*beta*nu_tp[top]*E1*Lp[top]*(Up[top]-Up[top-1])**2 - 2*dt*Lp[-1]*E1*Kzp[top]*(N_BVp[top])
         
         Q2L  = TDMA(aQ2L, bQ2L, cQ2L, dQ2L, self.N)
         return  Q2L 
@@ -682,7 +685,7 @@ class WCModel():
         # Double check this if-statement doesn't get executed when 
         # NBV^2 is negative ! 
         if sum(ind) > 0: 
-            Q2L[ind] = Q2[ind]*np.sqrt(0.281*Q2[ind]/(N_BV[ind]**2 + SMALL))
+            Q2L[ind] = Q2[ind]*np.sqrt(0.281*Q2[ind]/(N_BV[ind] + SMALL))
             L[ind] = Q2L[ind] / Q2[ind]
         L[abs(L) <= zb] = zb
         return L 

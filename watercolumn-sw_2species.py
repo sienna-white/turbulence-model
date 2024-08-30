@@ -350,23 +350,23 @@ if output:
 print("Total time = %f" % (time.time()  - t1))
 
 f0, a0 = RUN_TEST.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/heat_flux/%s_Temp.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_Temp.png' % TITLE)
 
 f0, a0 = RUN_TEST.plot_profiles('U', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/heat_flux/%s_U.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_U.png' % TITLE)
 
 f0, a0 = RUN_TEST.plot_profiles('Kz', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/heat_flux/%s_KZ.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_KZ.png' % TITLE)
 
 f0, a0 = RUN_TEST.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/heat_flux/%s_C.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_C.png' % TITLE)
 
 f0, a0 = RUN_TEST.plot_profiles('N_BV', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/heat_flux/%s_N_BV.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_N_BV.png' % TITLE)
 
 f0, a0 = RUN_TEST.plot_phasing([Algae1, Algae2], passed_string=TITLE, skip=3, show=True)
 plt.suptitle('%s' % TITLE)
-f0.savefig('figures/heat_flux/%s_PHASING.png' % TITLE)
+f0.savefig('figures/negative_BV/%s_PHASING.png' % TITLE)
 
 #***************************************************************************
 
