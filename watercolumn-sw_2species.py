@@ -16,21 +16,21 @@
 ###########################################################################
 '''
 
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import sys
+
+sys.path.append("model_code/")
 import watercolumn_lib as lib
-# Reload the module if it has changed
-import importlib
-importlib.reload(lib)
-# import watercolumn_run_lib as wrl
 from phytoplankton import Algae_Species, SelfShading
 from phytoplankton import self_shading
-import time
-import sys
-import os 
-import pandas as pd 
+
+import importlib
+importlib.reload(lib) # Reload the module if it has changed
+
+
+import sys, os, time 
 
 t1 = time.time()  # Time our simluation 
 
@@ -54,7 +54,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-ten_days = int(15*24*3600/dt)
+ten_days = int(3*24*3600/dt)
 M  = ten_days# seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
 #********************** FIXED CONSTANTS  ***************************
@@ -69,7 +69,6 @@ c_d = 0.05   # Drag coefficient
 base_temp = 20
 dtemp = 1.5 
 stretch = 0.25 
-
 
 #********************** DEFINE HYDRODYNAMIC FORCINGS ***************************
 # (1) PRESSURE 
@@ -184,9 +183,6 @@ z = model.z
 # Create a vector of time steps 
 Times = model.get_time_steps() 
 
-# Intialize an object for saving profiles throughout the model run
-# model= wrl.WCRun(N, z, save_output=save_output) 
-
 #***************************************************************************
 #   Initialize algae  
 #***************************************************************************
@@ -221,9 +217,8 @@ U = np.zeros(N)
 Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV2)
 
 # Initialize based on initial condition
-Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, U = lib.check_initial_condition(Px0)
+Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, U = model.check_initial_condition(Px0)
 ##########################################################################################   
-
 
 def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, time_index):
 
@@ -237,7 +232,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, t
     Light =  model.diurnal_light(time_index, 350, diurnal=DIURNAL_LIGHT)
     air_temp = model.air_temperature(time_index, max_temp=37, diurnal=True)
     wind = model.wind(time_index)
-    WIND = (c_d * wind)**2 * rhoA 
+    
 
     heat_in_air = air_temp * specific_heat_air * rhoA
     heat_in_water = specific_heat_water * rhoW * Cp[-1]
@@ -287,11 +282,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, t
     #   Advance temperature
     #**************************************************************************
     # Thomas algorithm to solve for C
-    # if stratified:
-    #     C  = Cp
-    # else: 
-    aC, bC, cC, dC = model.advance_scalar(Kzp, Cp, heat_flux)
-    C =  lib.TDMA(aC, bC, cC, dC, N)
+    C = model.advance_scalar(Kzp, Cp, heat_flux)
 
     #***************************************************************************
     # Update density and Brunt-Vaisala frequency
@@ -347,11 +338,11 @@ attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL_LI
 model.save_run_info(**attributes) 
 model.save_dataset(out_fn)
 
-if output:
-    change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
-    depth_av_kz = np.mean(Kz)
-    print("Depth averaged U = ")
-    save_at_end(depth_av_kz, diatoms.ws, change)
+# if output:
+#     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
+#     depth_av_kz = np.mean(Kz)
+#     print("Depth averaged U = ")
+#     save_at_end(depth_av_kz, diatoms.ws, change)
     
 print("Total time = %f" % (time.time()  - t1))
 
@@ -399,18 +390,18 @@ f0.savefig('figures/time_vary_forcing/%s_PHASING.png' % TITLE)
 
 
 
-assert(False)
-f0, a0 = saved_profiles.plot_profiles('net_growth2', skip=4, passed_string=RUN_INFO, show=True)
 
-f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
-# f0.savefig('figures/two_species/Kz-%s.png' % RUN_INFO)
+# f0, a0 = saved_profiles.plot_profiles('net_growth2', skip=4, passed_string=RUN_INFO, show=True)
 
-f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
-# f0.savefig('figures/two_species/U-%s.png' % RUN_INFO)
+# f0, a0 = saved_profiles.plot_profiles('Kz', skip=4, passed_string=RUN_INFO, show=False)
+# # f0.savefig('figures/two_species/Kz-%s.png' % RUN_INFO)
 
-# f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
+# f0, a0 = saved_profiles.plot_profiles('U', skip=4, passed_string=RUN_INFO, show=False)
+# # f0.savefig('figures/two_species/U-%s.png' % RUN_INFO)
 
-f0, a0 = saved_profiles.plot_profiles('algae1', skip=4, passed_string=RUN_INFO, show=False)
+# # f0.savefig('figures/two_species/biomass-%s.png' % RUN_INFO)
+
+# f0, a0 = saved_profiles.plot_profiles('algae1', skip=4, passed_string=RUN_INFO, show=False)
 # f0.savefig('figures/two_species/algae-%s.png' % RUN_INFO)
 
 

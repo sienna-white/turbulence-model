@@ -125,9 +125,14 @@ class SelfShading():
                 self.kxC += species.k * species.c
         vector = self.kxC*self.corrected_z +  self.add_txz  # This makes sense to be plus to me 
         self.kxC =  self.kxC*0 
+        # I = np.zeros(self.N)
+        # for i in (range(self.N)):
+        #     I[i] = np.sum(vector[i:-1]) 
+        # I = I * self.z
+  
         I = np.zeros(self.N)
-        for i in (range(self.N)):
-            I[i] = np.sum(vector[i:-1]) * self.z[i]
+        cumsum_vector = np.cumsum(vector[::-1])[::-1]
+        I = cumsum_vector * self.z
         I = I_in * np.exp(I)
         
 
@@ -151,8 +156,7 @@ def self_shading(ListofAlgae, I_in, turbidity, self_shading=True):
     if self_shading:
         for species in ListofAlgae:
             kxC += species.k * species.c
-    print("kxc:")
-    print(kxC)
+
     I = np.zeros(N)
     vector = kxC + (turbidity*corrected_z) # This makes sense to be plus to me 
     for i in (range(N)):
