@@ -21,7 +21,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import watercolumn_lib as lib
-import watercolumn_run_lib as wrl
+# Reload the module if it has changed
+import importlib
+importlib.reload(lib)
+# import watercolumn_run_lib as wrl
 from phytoplankton import Algae_Species, SelfShading
 from phytoplankton import self_shading
 import time
@@ -51,7 +54,7 @@ N = 80    # number of grid points
 H = 10    # depth (meters)
 dz = H/N  # grid spacing - may need to adjust to reduce oscillations
 dt = 10 #60   # (seconds) size of time step 
-ten_days = int(3*24*3600/dt)
+ten_days = int(15*24*3600/dt)
 M  = ten_days# seventy_two_hrs# 1440*18*2 # 400  # number of time steps 
 
 #********************** FIXED CONSTANTS  ***************************
@@ -70,8 +73,8 @@ stretch = 0.25
 
 #********************** DEFINE HYDRODYNAMIC FORCINGS ***************************
 # (1) PRESSURE 
-Px0 = 2e-6         # Magnitude on pressure gradient forcing
-T_Px = 0 #$12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
+Px0 = 2e-5         # Magnitude on pressure gradient forcing
+T_Px = 12 #$12 #12 # 12.0  # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 # (2) Wind
 Wind = 0                        # u_star =m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
@@ -84,10 +87,9 @@ flux_max = 0.005
 
 # (1) Light 
 DIURNAL_LIGHT = False #  
-background_turbidity =  0.0016
+background_turbidity =  0.5#016
 I_in = 350 
 init = 1
-
 
 #********************** DEFINING OUTPUT ...***************************
 
@@ -108,20 +110,20 @@ Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
 '''
 
-Algae1 = Algae_Species(k = 0.07,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
-                pmax = 0.05,# 5,     # maximum specific growth rate [1/hour]
+Algae1 = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
+                pmax = 0.06,# 5,     # maximum specific growth rate [1/hour]
                 ws = -1.4e-5,       # vertical velocity [m/s]
                 Hi = 40,            # half-saturation of light-limited growth [mu mol photons * m^2/s]
-                Li = 0.001,        # specific loss rate [1/hour]
+                Li = 0.006,        # specific loss rate [1/hour]
                 name = "Diatoms",
                 self_shading=True,
                 net=True)
 
-Algae2 = Algae_Species(k = 0.0034, 
-                    pmax = 0.01, 
-                    ws = 1.4e-5,
+Algae2 = Algae_Species(k = 0.034, 
+                    pmax = 0.008, 
+                    ws = 1.4e-4,
                     Hi = 40,
-                    Li = 0.001,
+                    Li = 0.004,
                     name = "HAB",
                     self_shading=True,
                     net=True)
@@ -138,6 +140,8 @@ model = lib.WCModel(N=N,
                     dt=dt,
                     N_time_steps=M,
                     base_temp = 20) 
+
+model.read_forcings_from_file("forcing_data/Holt_CIMIS_data_processed_August2024_10s.csv")
 
 
 
@@ -175,13 +179,13 @@ Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 #   Initialize arrays 
 #***************************************************************************
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] 
-z = model.get_z() 
+z = model.z
 
 # Create a vector of time steps 
 Times = model.get_time_steps() 
 
 # Intialize an object for saving profiles throughout the model run
-RUN_TEST= wrl.WCRun(N, z, save_output=save_output) 
+# model= wrl.WCRun(N, z, save_output=save_output) 
 
 #***************************************************************************
 #   Initialize algae  
@@ -205,7 +209,7 @@ C = model.temp_profile(dtemp=dtemp, stretch=stretch, STRATIFIED_INIT_TEMP=False)
 rho = model.calculate_rho(C) # Single scalar, linear equation of state
 
 # Calculate Brunt-Vaisala frequency profile
-N_BV = model.calculate_brunt_vaisala(rho)
+N_BV2 = model.calculate_brunt_vaisala(rho)
 
 #***************************************************************************
 #   Initialize velocity + turbulent parameters 
@@ -214,14 +218,14 @@ N_BV = model.calculate_brunt_vaisala(rho)
 # Initalize velocity
 U = np.zeros(N) 
 
-Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV)
+Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV2)
 
 # Initialize based on initial condition
-Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, U = lib.check_initial_condition(Px0)
+Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, U = lib.check_initial_condition(Px0)
 ##########################################################################################   
 
 
-def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, time_index):
+def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, time_index):
 
     '''
     Time-advancing algorithm. Steps a single timestep for c, rho, q2, q2l, l, kz, nu_t, kq
@@ -230,8 +234,10 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
 
     #********************** TIME VARYING FORCINGS ***************************
     timestep = Times[time_index]
-    Light =  lib.diurnal_light(timestep, 350, diurnal=DIURNAL_LIGHT)
-    air_temp = lib.air_temperature(timestep, max_temp=37, diurnal=True)
+    Light =  model.diurnal_light(time_index, 350, diurnal=DIURNAL_LIGHT)
+    air_temp = model.air_temperature(time_index, max_temp=37, diurnal=True)
+    wind = model.wind(time_index)
+    WIND = (c_d * wind)**2 * rhoA 
 
     heat_in_air = air_temp * specific_heat_air * rhoA
     heat_in_water = specific_heat_water * rhoW * Cp[-1]
@@ -257,10 +263,10 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     U = model.advance_velocity(Up, nu_tp, Px, W=Wstress)
 
     #   Advance TKE / Q2 
-    Q2 = model.advance_Q2(Q2p, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar) 
+    Q2 = model.advance_Q2(Q2p, Lp, Kqp, nu_tp, Up, Kzp, N_BV2p, ustar) 
 
     #   Advance Q2 * L     
-    Q2L = model.advance_Q2L(Q2p, Q2Lp, Lp, Kqp, nu_tp, Up, Kzp, N_BVp, ustar)
+    Q2L = model.advance_Q2L(Q2p, Q2Lp, Lp, Kqp, nu_tp, Up, Kzp, N_BV2p, ustar)
 
     #***************************************************************************
     #   ADVANCE ALAGE 
@@ -290,7 +296,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     #***************************************************************************
     # Update density and Brunt-Vaisala frequency
     rho = model.calculate_rho(C) 
-    N_BV = model.calculate_brunt_vaisala(rho)
+    N_BV2 = model.calculate_brunt_vaisala(rho)
 
     # Prevent negative values from causing instabilities
     Q2 = model.add_noise_floor(Q2) 
@@ -300,7 +306,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
     Q = np.sqrt(Q2)
 
     # Get length scale by dividing Q2L by Q2 and checking for stability 
-    L = model.calculate_lengthscale(Q2, Q2L, N_BV)
+    L = model.calculate_lengthscale(Q2, Q2L, N_BV2)
 
     # Calculate turbulent diffusivities 
     nu_t, Kq, Kz = model.calculate_turbulent_functions(Gh, Q, L)
@@ -309,14 +315,14 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BVp, Ap1, Ap2, ti
         # Pack data into dictionary structure before saving 
         data2d = {'U': U, 'C': C, 'Q2': Q2, 
                 'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
-                'N_BV': N_BV, 'algae1': algae1, 'algae2': algae2,
+                'N_BV2': N_BV2, 'algae1': algae1, 'algae2': algae2,
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
         photic_depth = model.calculate_photic_depth(Light, light)
         data1d = {'biomass1': sum(algae1), 'biomass2' : sum(algae2), "photic_depth": photic_depth}
-        RUN_TEST.save_2d_data(Times[time_index], **data2d)
-        RUN_TEST.save_1d_data(Times[time_index], **data1d)
+        model.save_2d_data(Times[time_index], **data2d)
+        model.save_1d_data(Times[time_index], **data1d)
 
-    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2]
+    return [U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, algae1, algae2]
 
 
 #***************************************************************************
@@ -328,18 +334,18 @@ for m in range(1,M):
     #     print('Time step = %d' % m)
 
     # Advance the model by one timestep
-    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2, time_index=m) 
+    output = wc_advance(U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, algae1, algae2, time_index=m) 
 
     # Unpack output
-    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV, algae1, algae2 = output
+    U, C, Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, algae1, algae2 = output
 
 
 output=False
 
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL_LIGHT),
               "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
-RUN_TEST.save_run_info(**attributes) 
-RUN_TEST.save_dataset(out_fn)
+model.save_run_info(**attributes) 
+model.save_dataset(out_fn)
 
 if output:
     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
@@ -349,24 +355,24 @@ if output:
     
 print("Total time = %f" % (time.time()  - t1))
 
-f0, a0 = RUN_TEST.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/negative_BV/%s_Temp.png' % TITLE)
+f0, a0 = model.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
+f0.savefig('figures/time_vary_forcing/%s_Temp.png' % TITLE)
 
-f0, a0 = RUN_TEST.plot_profiles('U', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/negative_BV/%s_U.png' % TITLE)
+f0, a0 = model.plot_profiles('U', skip=3, passed_string=TITLE, show=True)
+f0.savefig('figures/time_vary_forcing/%s_U.png' % TITLE)
 
-f0, a0 = RUN_TEST.plot_profiles('Kz', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/negative_BV/%s_KZ.png' % TITLE)
+f0, a0 = model.plot_profiles('Kz', skip=3, passed_string=TITLE, show=True)
+f0.savefig('figures/time_vary_forcing/%s_KZ.png' % TITLE)
 
-f0, a0 = RUN_TEST.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/negative_BV/%s_C.png' % TITLE)
+f0, a0 = model.plot_profiles('C', skip=3, passed_string=TITLE, show=True)
+f0.savefig('figures/time_vary_forcing/%s_C.png' % TITLE)
 
-f0, a0 = RUN_TEST.plot_profiles('N_BV', skip=3, passed_string=TITLE, show=True)
-f0.savefig('figures/negative_BV/%s_N_BV.png' % TITLE)
+f0, a0 = model.plot_profiles('N_BV2', skip=3, passed_string=TITLE, show=True)
+f0.savefig('figures/time_vary_forcing/%s_N_BV2.png' % TITLE)
 
-f0, a0 = RUN_TEST.plot_phasing([Algae1, Algae2], passed_string=TITLE, skip=3, show=True)
+f0, a0 = model.plot_phasing([Algae1, Algae2], passed_string=TITLE, skip=3, show=True)
 plt.suptitle('%s' % TITLE)
-f0.savefig('figures/negative_BV/%s_PHASING.png' % TITLE)
+f0.savefig('figures/time_vary_forcing/%s_PHASING.png' % TITLE)
 
 #***************************************************************************
 

@@ -7,7 +7,7 @@ import matplotlib as mpl
 import pandas as pd 
 import os
 
-['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV']
+['U', 'C', 'Q2', 'Q2L', 'rho', 'L', 'nu_t', 'Kz', 'Kq', 'N_BV2']
 variable2name = {} 
 variable2name['U'] = 'velocity'
 variable2name['C'] = 'temperature'
@@ -18,7 +18,7 @@ variable2name['L'] = 'length scale'
 variable2name['nu_t'] = r'turbulent viscosity ($\nu_t$)'
 variable2name['Kz'] = r'turbulent diffusivity ($\kappa_z$)'
 variable2name['Kq'] = r'turbulent diffusivity ($\kappa_q$)'
-variable2name['N_BV'] = r'Brunt-Väisälä frequency ($N_{BV}$)'
+variable2name['N_BV2'] = r'Brunt-Väisälä frequency ($N_{BV}^2$)'
 variable2name['algae'] = r'Algae concentration'
 variable2name['biomass'] = r'Total algae biomass'
 variable2name['net_growth'] = r'Net Algae Growth (loss + growth)'
@@ -40,7 +40,7 @@ variable2units['L'] = r'm'
 variable2units['nu_t'] = r'm$^2$/s'
 variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
-variable2units['N_BV'] = r'1/s'
+variable2units['N_BV2'] = r'1/$s^2$'
 variable2units['algae'] = r'10$^6$ cells/m$^2$'
 variable2units['algae1'] = r'10$^6$ cells/m$^2$'
 variable2units['algae2'] = r'10$^6$ cells/m$^2$'
@@ -242,8 +242,8 @@ class WCRun:
 
         axs[3] = self.add_profile_to_axis( 'algae2', plot_index, legend_ind, axs[3])
         axs[3].set_title("Concentration of %s" % ListOfSpecies[1].name)
-        axs[3].set_xlim(0, 25)
-        axs[1].set_xlim(0, 25)
+        axs[3].set_xlim(0, 2)
+        axs[1].set_xlim(0, 2)
 
         return fig, axs
 
