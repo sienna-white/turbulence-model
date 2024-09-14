@@ -31,9 +31,20 @@ variable2units['nu_t'] = r'm$^2$/s'
 variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV2'] = r'1/s$^2$'
-variable2units['algae'] = r'10$^6$ cells/m$^2$'
+variable2units['algae'] = r'$\mu$g/L' #'10$^6$ cells/m$^2$'
 variable2units['biomass'] = r'10$^6$ cells'
 variable2units['net_growth'] = r'hour$^{-1}$'
+variable2units['algae1'] = r'$\mu$g/L'
+variable2units['algae2'] = r'$\mu$g/L'
+
+
+variable2convert = {}
+for key in variable2units.keys():
+    variable2convert[key] = 1.0
+variable2convert["algae1"] = 1e6 * (4* 1e-6) * 1000  # 10^6 cells/mL --> ug/L 
+variable2convert["algae2"] = 1e6 * (4* 1e-6) * 1000  
+variable2convert["algae"] = 1e6 * (4* 1e-6) * 1000  
+
 
 # Physical parameters 
 z0 = 0.01         # Bottom roughness [m]

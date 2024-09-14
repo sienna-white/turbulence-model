@@ -52,7 +52,10 @@ def calculate_photic_depth(self, Light, light_at_z):
     if Light<1:
         photic_depth = 0
     else:
-        photic_depth = self.z[light_at_z>(0.1 * Light)][0]
+        try: 
+            photic_depth = self.z[light_at_z>(0.1 * Light)][0]
+        except:
+            photic_depth = 0
     return photic_depth
 
 def add_noise_floor(self, vector):

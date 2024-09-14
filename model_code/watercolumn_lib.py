@@ -33,12 +33,12 @@ def add_text(fig, ax, leg, species):
     ax.text(1.05, 0.05, text, transform=ax.transAxes)
 
 
-def save_output(csv_file, var1, var2, output, header):
+def save_output(csv_file, var1, var2, output1, output2, header):
 
     # Check if the CSV file exists
     file_exists = os.path.isfile(csv_file)
 
-    data = {header[0]: [var1], header[1]: [var2], header[2]: [output]}
+    data = {header[0]: [var1], header[1]: [var2], header[2]: [output1], header[3]: [output2]}
     df = pd.DataFrame(data)
 
     # Append the DataFrame to the CSV file
@@ -137,11 +137,14 @@ class WCModel():
     (3) Retrieve forcings @ timestep
     ***************************************************************************
     '''   
+    analytical_temperature_profile = forcings.analytical_temperature_profile
     get_pressure_at_timestep = forcings.get_pressure_at_timestep
     read_forcings_from_file = forcings.read_forcings_from_file
     air_temperature = forcings.air_temperature
+    temperature = forcings.temperature
     diurnal_light = forcings.diurnal_light
     wind = forcings.wind
+    wind_speed = forcings.wind_speed
 
 
     ''' 
@@ -162,6 +165,7 @@ class WCModel():
     ***************************************************************************
     '''       
     plot_profiles = plotting.plot_profiles
+    plot_shear = plotting.plot_shear
     get_plot_indices = plotting.get_plot_indices
     plot_time_series =  plotting.plot_time_series
     plot_phasing=  plotting.plot_phasing
