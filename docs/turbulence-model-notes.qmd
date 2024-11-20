@@ -503,6 +503,36 @@ We can also impose a more-realistic light field which varies as a function of ti
 
 ![Total algal mass with diurnal light over time.](/Users/siennawhite/research/turbulence-model/Algae Mass with diurnal light.png){height=200} -->
 
+
+\section{Scaling analysis}
+
+$$ \nu_t \sim \text{m}^2 ~\text{s}^{-1}$$  
+
+The photic zone length ($L_p$), or the depth at which light intensity is 10\% of the surface light intensity, 
+$$ L_p \sim \text{m}$$
+The settling velocity of diatoms is 
+$$ w_s \sim \text{m s}^{-1}$$
+
+We can envision a dimensionless parameter built around the concept of how long a particle stays in the photic zone,
+
+$$ \chi \sim \frac{L_p/ w_s}{L_p^2 / \nu_t} \sim \frac{w_s}{L_p / \nu_t} $$ 
+
+where the numerator represents the time scale for a diatom to sink through the photic zone and the denominator represents the time scale for a diatom to diffuse through the photic zone. 
+
+In a regime with low turbulent energy, where $t_{s}$ dominates, we can predict that growth for an algal species ``1" could be approximated by
+
+$$ \chi_1 \sim \text{pmax}_1 \cdot t_{s_1} $$  
+
+which can then be compared to the growth for some algal species two, 
+
+$$ \chi_2 \sim \text{pmax}_2 \cdot t_{s_2} $$ 
+
+
+We can expand this to include the growth rate (pmax), 
+
+<!-- $$ \chi \sim \frac{t_{s} }{t_{D} \pmax_1}$$  -->
+
+
 \newpage
 
 <!-- We can write the population for phytoplankton $C$ as

@@ -1,10 +1,10 @@
-from numba import jit 
+# from numba import jit 
 import numpy as np
 import math
 from constants import * 
 
 
-@jit 
+# @jit 
 def TDMA(aX, bX, cX, dX, N):
     # Tri Diagonal Matrix Algorithm(a.k.a Thomas algorithm) solver
     # a = Lower Diag, b = Main Diag, c = Upper Diag, d = solution vector

@@ -89,9 +89,9 @@ bottom_temp = 30
 bottom_speed = 0 
 top_speed=3.5  
 
-TIDAL_PHASE_SHIFT = float(os.environ["tidal_phase"])
+TIDAL_PHASE_SHIFT = 0 #float(os.environ["tidal_phase"])
 TEMP_PHASE_SHIFT = 0
-WIND_PHASE_SHIFT = float(os.environ["wind_phase"])
+WIND_PHASE_SHIFT = 0 # float(os.environ["wind_phase"])
 LIGHT_PHASE_SHIFT = TEMP_PHASE_SHIFT
 
 #********************** DEFINE ALGAL FORCINGS ***************************
@@ -170,7 +170,7 @@ TITLE= "Px=%2.1e_tidalphasing=%d_windphasing=%d_Wind=%1.1f" % (Px0, TIDAL_PHASE_
 #     TITLE+= " (DIURNAL_LIGHT LIGHT)"
 
 ########################################################################################## 
-output_csv = os.environ["output_csv"] # "PHASING_OUTPUT.csv"
+output_csv = "temp.csv" # os.environ["output_csv"] # "PHASING_OUTPUT.csv"
 def save_at_end(tidal_phasing, wind_phasing, diatom_biomass, hab_biomass):
     lib.save_output(output_csv, tidal_phasing, wind_phasing, diatom_biomass, hab_biomass, header=["tidal_phasing", "wind_phasing", "diatom_biomass", "hab_biomass"])
 
@@ -356,7 +356,7 @@ output=False
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL_LIGHT),
               "Wind": np.nan, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 model.save_run_info(**attributes) 
-# model.save_dataset(out_fn)
+model.save_dataset(out_fn)
 
 # if output:
 #     change = diatoms.total_mass[-1] / diatoms.total_mass[0] 
