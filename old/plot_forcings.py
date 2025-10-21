@@ -65,7 +65,6 @@ model.set_pressure_parameters(Px0, T_Px)
 # Create a vector of time steps 
 Times = model.get_time_steps() 
 
-
 # Light 
 Light =  model.diurnal_light(Times, 450, phase_shift=LIGHT_PHASE_SHIFT, diurnal=True)
 
@@ -89,7 +88,6 @@ Temp = model.temperature(Times, bottom_temp=bottom_temp, top_temp=top_temp, phas
 # Px   = model.get_pressure_at_timestep(Times, phase_shift=TIDAL_PHASE_SHIFT)
 
 hours = Times/3600
-import matplotlib.pyplot as plt
 
 fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(10, 6))
 axs = axs.ravel() 

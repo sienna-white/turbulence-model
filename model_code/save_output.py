@@ -21,8 +21,8 @@ def save_1d_data(self, time, **kwargs):
 
 def save_2d_data(self, time, **kwargs):
     if self.save_output:
-        time_index = [time] * self.N
-        index = pd.MultiIndex.from_arrays([self.z, time_index], names=["z", "time"])
+        time_index = [time] * self.N      
+        index = pd.MultiIndex.from_arrays([self.z, time_index], names=["z", "t"])
         df = pd.DataFrame(index=index) 
         for key, value in kwargs.items():
             df[key] = value
@@ -33,11 +33,12 @@ def save_2d_data(self, time, **kwargs):
             self.dataset= dfnc 
             self.first_data = False
         else:
-            self.dataset = xr.concat([dfnc, self.dataset], dim='time')
+            self.dataset = xr.concat([dfnc, self.dataset], dim='t')
     else:
         return
 
 def save_dataset(self, filename):
     if self.save_output:
+        self.dataset = self.dataset.sortby('t')
         self.dataset.to_netcdf(filename)
     return

@@ -1,3 +1,0 @@
-
-diatoms.ws = 0.5
-Px = 2e-6

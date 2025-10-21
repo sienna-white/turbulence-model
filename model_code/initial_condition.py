@@ -47,20 +47,29 @@ def initialize_turbulent_functions(self, N_BV2):
 def check_initial_condition(self, Px0):
     csv_name='initial_condition/initial_condition-pressure=%2.2e.csv' % Px0
     if os.path.isfile(csv_name): 
+        print("Using initial condition from %s" % csv_name)
+        ic = pd.read_csv(csv_name)
+        Q2 = ic['Q2'].values
+        Q2L = ic['Q2L'].values
+        rho = ic['rho'].values
+        L = ic['L'].values
+        nu_t = ic['nu_t'].values
+        Kz = ic['Kz'].values
+        Kq = ic['Kq'].values
+        N_BV2 = ic['N_BV'].values
+        U = ic['U'].values 
         pass
     else:
-        csv_name='initial_condition/initial_condition-pressure=2.00e-07.csv' 
         print("No initial condition for this pressure gradient --> using default!")
+        Q2 = 1e-3
+        Q2L = 1e-3
+        rho = 1000
+        L = 1e-3
+        nu_t = 1e-3
+        Kz = 1e-3
+        Kq = 1e-3
+        N_BV2 = 1e-3
+        U = 1e-3
 
-    print("Using initial condition from %s" % csv_name)
-    ic = pd.read_csv(csv_name)
-    Q2 = ic['Q2'].values
-    Q2L = ic['Q2L'].values
-    rho = ic['rho'].values
-    L = ic['L'].values
-    nu_t = ic['nu_t'].values
-    Kz = ic['Kz'].values
-    Kq = ic['Kq'].values
-    N_BV2 = ic['N_BV'].values
-    U = ic['U'].values 
+
     return Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, U
