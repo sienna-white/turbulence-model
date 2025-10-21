@@ -31,7 +31,7 @@ class Algae_Species:
 
     def __init__(self, k=0, pmax = 0, ws=0, Hi = 0, Li = 0, name = None, self_shading=False, net=False):
         ''' Initialize species with provided values'''
-        self.k = k #  0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
+        self.k = k * (1e-2)**2 # Convert to m^2/ 10^6 cells? #  0.1 *  0.0001 # k is specific light attenuation coefficient [cm^2 / 10^6 cells]-->m2
         self.pmax = self.hour2second(pmax)      # 1/hour to 1/second 
         self.ws =   ws #self.hour2second(ws)/100    # 100 cm/m ; 3600 seconds/hour 
         self.Hi = Hi

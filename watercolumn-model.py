@@ -34,32 +34,19 @@ import sys, os, time
 t1 = time.time()  # Time our simluation 
 
 
-'''
-Because the indexing is a little confusing in Python vs. Matlab (0 is the bed, N-1 is 
-the top of the water column), and then the point below the top is N-2, when indexing 
-the top of the water column, I defined a variable called "top" to be N-1. This is just 
-to make the code a little more readable, and hopefully less confusing. Hopefully the concept
-of U[0] = bed velocity is a little more intuitive.
-
-There's also a separate python file called watercolumn_lib.py that contains some functions
-as well as a class definition called "SavedProfiles". This class is used to store the
-profiles at each requested time step, and then plot them at the end. Mostly this was easier
-than passing a bunch of arrays around between functions.
-'''
-
+# Filename for your netCDF output
+out_fn = "demo_for_lisa.nc"
 
 #********************** SPATIAL DOMAIN  ***************************
 N = 80      # number of grid points
-H = 10      # depth (meters)
+H = 5      # depth (meters)
 dz = H/N    # grid spacing - may need to adjust to reduce oscillations
-dt = 10 #60   # (seconds) size of time step 
-# ten_days = int(7*24*3600/dt)
+dt = 10   # (seconds) size of time step 
 M  = 600 # number of time steps 
 
 # Increments for saving profiles. set to 1 to save all; 10 saves every 10th, etc. 
 isave = 20
 
-print("Running model for %2.1f hours" % (M*dt/3600))
 #********************** FIXED CONSTANTS  ***************************
 rhoA = 1.23                 # DENSITY OF AIR, kg / m^3
 rhoW = 1000                 # Density of Water
@@ -67,32 +54,32 @@ specific_heat_water = 4181  # J/kg-degC
 specific_heat_air = 1007    # J/kg-degCxrh
 c_d = 0.05                  # Drag coefficient for surface
 
-#********************** INITIAL CONDITION ***************************
+#************ TEMPERATURE INITIAL CONDITION & FORCING ***************************
 # Initialize thermocline based on tanh curve 
 base_temp = 22
 dtemp = 1.5 
 stretch = 0.25 
+STRATIFIED_INIT_TEMP = False 
+
+
+# Heat flux
+# flux_max = 0.005    # ignore for now unless trying to implement heat flux .. 
+# top_temp = 33       # ignore unless trying to implement time-varying temperature
+# bottom_temp = 30    # ignore unless trying to implement time-varying temperature
 
 #********************** DEFINE HYDRODYNAMIC FORCINGS ***************************
 # (1) PRESSURE 
 Px0 = 2e-6          # Barotropic gradient forcing --> TIDES! 
 T_Px = 12           # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
-# (2) Wind
-WIND = 3                    # u_star =m/s >> 0.05 is  drag coefficient, 10 is my wind speed 
-# WIND = (c_d * Wind)**2 * rhoA  # this is rho * u*^2
+#************ WIND FORCING ***************************
+WIND = 8            # constant wind speed, m/s
+# bottom_speed = 0  # ignore unless trying to implement time-varying wind
+# top_speed=3.5     # ignore unless trying to implement time-varying wind
 
-# (3) Heat flux
-STRATIFIED_INIT_TEMP = False 
-flux_max = 0.005
-
-# Water temperature  temperature(t, bottom_temp, top_temp, phase_shift = 12)
-top_temp = 33
-bottom_temp = 30
-bottom_speed = 0 
-top_speed=3.5  
-
-# PHASING BETWEEN FORCINGS -- leave as-is unless you want to experiment here
+#************ PHASING ***************************
+# leave as-is unless you want to experiment here. only relevant if 
+# you are implementing time-varying forcings.
 TIDAL_PHASE_SHIFT = 0 
 TEMP_PHASE_SHIFT = 0
 WIND_PHASE_SHIFT = 0 
@@ -103,17 +90,8 @@ LIGHT_PHASE_SHIFT = 0
 DIURNAL_LIGHT = False #     
 background_turbidity =  0.6         # belive this is 1/m
 I_in = 350                          # irradiance in
-init = 1e-2             
+   
 
-#********************** DEFINING OUTPUT ...***************************
-
-out_fn = "demo_for_lisa.nc"
-
-#***************************************************************************
-read_from_input=False
-save_output=True
-plot=True
-output=False
 
 #***************************************************************************
 #   Algae parameters
@@ -123,7 +101,7 @@ Define each type of algae as a class...
 Diatoms ws = -1.38e-5 m/s
 Cyanobacteria = 1.38e-4 m/s
 '''
-
+initial_phytoplankton = 1e-2          
 
 Algae1 = Algae_Species(k = 0.7,    # specific light attenuation coefficient [cm^2 / 10^6 cells]
                 pmax = 0.1,         # maximum specific growth rate [1/hour]
@@ -146,9 +124,8 @@ Algae2 = Algae_Species(k = 0.034,
 
 
 #***************************************************************************
-# MODEL OUPTPUT PARAMETERS 
-#***************************************************************************
-
+# Shouldn't need to change this section EXCEPT for modifying initial condition for temperature? 
+# ---------------------------------------------------------------------------
 
 model = lib.WCModel(N=N,
                     H=H, 
@@ -156,34 +133,6 @@ model = lib.WCModel(N=N,
                     N_time_steps=M,
                     base_temp = base_temp) 
 
-#***************************************************************************
-
-# Initialize pressure forcing
-model.set_pressure_parameters(Px0, T_Px)
-
-TITLE= "demo_for_lisa"
-
-########################################################################################## 
-output_csv = "temp.csv" 
-def save_at_end(tidal_phasing, wind_phasing, diatom_biomass, hab_biomass):
-    lib.save_output(output_csv, tidal_phasing, wind_phasing, diatom_biomass, hab_biomass, header=["tidal_phasing", "wind_phasing", "diatom_biomass", "hab_biomass"])
-
-#***************************************************************************
-
-'''
-Initialize all profiles and closure parameters 
-Call once before time loop
-Sets all forcing: pressure gradients, stresses, etc.
-Should be used to adjust initial temperature/salinity profiles
-Velocity initialized to zero
-Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
-'''
-
-#**************  Shouldn't need to change this section.
-# * 
-#***************************************************************************
-#   Initialize arrays 
-#***************************************************************************
 # Initialize z vector --> bottom at z[0]; top at z[N-1] or z[top] 
 z = model.z
 
@@ -193,10 +142,10 @@ Times = model.get_time_steps()
 #***************************************************************************
 #   Initialize algae  
 #***************************************************************************
-Algae1.set_initial_concentration(N, init=init, opt='constant')
+Algae1.set_initial_concentration(N, init=initial_phytoplankton, opt='constant')
 Algae1.set_vertical_grid(H, N, dz)
 
-Algae2.set_initial_concentration(N, init=init, opt='constant')
+Algae2.set_initial_concentration(N, init=initial_phytoplankton, opt='constant')
 Algae2.set_vertical_grid(H, N, dz)
 
 algae1 = Algae1.c
@@ -207,9 +156,9 @@ SelfShade = SelfShading(z, N, background_turbidity, self_shading=True)
 #***************************************************************************
 #   Initialize temperature / strafication profile 
 #***************************************************************************
-# initializes it based on np.tanh(centered_z * stretch)*dtemp + self.base_temp
-C = np.tanh(z * stretch)*dtemp + base_temp
-#model.temp_profile(dtemp=dtemp, stretch=stretch, STRATIFIED_INIT_TEMP=False)
+
+#  * * * EDIT HERE IF YOU WANT TO CHANGE INITIAL TEMP PROFILE!!!! 
+C = np.tanh(z * stretch)*dtemp + base_temp 
 
 # Calculate density profile 
 rho = model.calculate_rho(C)    # Single scalar, linear equation of state
@@ -221,15 +170,21 @@ N_BV2 = model.calculate_brunt_vaisala(rho)
 #   Initialize velocity + turbulent parameters 
 #***************************************************************************
 
+# Initialize pressure forcing
+model.set_pressure_parameters(Px0, T_Px)
+
 # Initalize velocity
 U = np.zeros(N) 
 
+# Turbulence quantities initialized to "SMALL"; Lengthscale parabolic
 Q2, Q2L, Q, L, Gh, nu_t, Kq, Kz = model.initialize_turbulent_functions(N_BV2)
 
 # Initialize based on initial condition
+# only relevant if you saved an initial condition previously
 # Q2, Q2L, rho, L, nu_t, Kz, Kq, N_BV2, U = model.check_initial_condition(Px0)
 ##########################################################################################   
 #***************** end 
+#***************************************************************************
 
 def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, time_index):
 
@@ -241,22 +196,25 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, t
     #********************** TIME VARYING FORCINGS ***************************
     timestep = Times[time_index] 
 
-    # Light 
+    # [1] Light for phytoplankton growth
     Light =  model.diurnal_light(time_index, 1000, phase_shift=LIGHT_PHASE_SHIFT, diurnal=True)
 
-    #***************************************************************************
-    #   Wind speed
-    #**************************************************************************
-    # option 1: constant wind speed
+    #  [2] Wind speed
+    #       option 1: constant wind speed
     Wind = WIND
 
-    # option 2: time-varying wind speed
+    #       option 2: time-varying wind speed
     # Wind = model.wind_speed(time_index, bottom_speed, top_speed, phase_shift=WIND_PHASE_SHIFT)
 
-    # Calculates wind stress 
+    #  Calculates wind stress 
     wind = (c_d * Wind)**2 * rhoA 
     Wstress= wind * dt/(dz*rhoW) 
+    #**************************************************************************
 
+
+    #***************************************************************************
+    #   ADVANCE HYDRODYNAMIC VARIABLES
+    #***************************************************************************
     # Extracts pressure from our forcing time series 
     Px   = model.get_pressure_at_timestep(timestep, phase_shift=TIDAL_PHASE_SHIFT)
 
@@ -266,9 +224,6 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, t
     # Update shear velocity at bottom boundary. Note explicit dependence on C_D
     ustar = model.calculate_ustar(Up[0]) 
 
-    #***************************************************************************
-    #   ADVANCE HYDRODYNAMIC VARIABLES
-    #***************************************************************************
     #   Advance velocity (U,V)
     U = model.advance_velocity(Up, nu_tp, Px, W=Wstress)
 
@@ -356,11 +311,9 @@ for m in range(1,M):
 
 
 attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL_LIGHT),
-              "Wind": Wind, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
+              "Wind": WIND, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 model.save_run_info(**attributes) 
 model.save_dataset(out_fn)
-
-save_at_end(TIDAL_PHASE_SHIFT, WIND_PHASE_SHIFT, sum(algae1), sum(algae2))
 
 print("Total time = %f" % (time.time()  - t1))
 

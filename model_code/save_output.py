@@ -1,5 +1,8 @@
 import xarray as xr 
 import pandas as pd 
+from constants import * 
+
+
 
 def save_run_info(self, **kwargs):
     # Add to attributes
@@ -40,5 +43,9 @@ def save_2d_data(self, time, **kwargs):
 def save_dataset(self, filename):
     if self.save_output:
         self.dataset = self.dataset.sortby('t')
+        # Add data about each variable
+        for var in self.dataset.data_vars:
+            self.dataset[var].attrs['units'] = variable2name[var]
+            self.dataset[var].attrs['long_name'] = variable2units[var]
         self.dataset.to_netcdf(filename)
     return

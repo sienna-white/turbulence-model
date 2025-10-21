@@ -31,11 +31,13 @@ variable2units['nu_t'] = r'm$^2$/s'
 variable2units['Kz'] = r'm$^2$/s'
 variable2units['Kq'] = r'm$^2$/s'
 variable2units['N_BV2'] = r'1/s$^2$'
-variable2units['algae'] = r'$\mu$g/L' #'10$^6$ cells/m$^2$'
+variable2units['algae'] = r'10$^6$ cells/cm$^3$' #'10$^6$ cells/m$^2$'
 variable2units['biomass'] = r'10$^6$ cells'
 variable2units['net_growth'] = r'hour$^{-1}$'
-variable2units['algae1'] = r'$\mu$g/L'
-variable2units['algae2'] = r'$\mu$g/L'
+variable2units['algae1'] = r'10$^6$ cells/cm$^3$'
+variable2units['algae2'] = r'10$^6$ cells/cm$^3$'
+variable2units['net_growth1'] = r's$^{-1}$'
+variable2units['net_growth2'] = r's$^{-1}$'
 
 
 variable2convert = {}
