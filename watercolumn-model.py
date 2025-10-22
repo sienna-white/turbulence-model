@@ -39,7 +39,7 @@ out_fn = "demo_for_lisa.nc"
 
 #********************** SPATIAL DOMAIN  ***************************
 N = 80      # number of grid points
-H = 5      # depth (meters)
+H = 10      # depth (meters)
 dz = H/N    # grid spacing - may need to adjust to reduce oscillations
 dt = 10   # (seconds) size of time step 
 M  = 600 # number of time steps 
@@ -69,8 +69,8 @@ STRATIFIED_INIT_TEMP = False
 
 #********************** DEFINE HYDRODYNAMIC FORCINGS ***************************
 # (1) PRESSURE 
-Px0 = 2e-6          # Barotropic gradient forcing --> TIDES! 
-T_Px = 12           # Period [hours] on pressure gradient forcing. Set to 0 for steady
+Px0 = 2e-4         # Barotropic gradient forcing --> TIDES! 
+T_Px = 1 #12           # Period [hours] on pressure gradient forcing. Set to 0 for steady
 
 #************ WIND FORCING ***************************
 WIND = 8            # constant wind speed, m/s
@@ -87,7 +87,7 @@ LIGHT_PHASE_SHIFT = 0
 
 #********************** DEFINE ALGAL FORCINGS ***************************
 # (1) Light 
-DIURNAL_LIGHT = False #     
+# DIURNAL_LIGHT = False #     
 background_turbidity =  0.6         # belive this is 1/m
 I_in = 350                          # irradiance in
    
@@ -284,7 +284,7 @@ def wc_advance(Up, Cp, Q2p, Q2Lp, rhop, Lp, nu_tp, Kzp, Kqp, N_BV2p, Ap1, Ap2, t
                 'rho': rho, 'nu_t': nu_t, 'Kz': Kz, 'Kq': Kq,
                 'N_BV2': N_BV2, 'algae1': algae1, 'algae2': algae2,
                 'net_growth1': gamma1, 'net_growth2' : gamma2}
-        photic_depth = model.calculate_photic_depth(Light, light)
+        # photic_depth = model.calculate_photic_depth(Light, light)
         model.save_2d_data(Times[time_index], **data2d)
 
         # 1D data -- commenting out for now.  
@@ -310,7 +310,7 @@ for m in range(1,M):
 
 
 
-attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : int(DIURNAL_LIGHT),
+attributes = {"Px0": Px0, "T_Px": T_Px, "I_in": I_in, "Diurnal" : True,
               "Wind": WIND, "pmax1": Algae1.pmax, "pmax2": Algae2.pmax, "ws1": Algae1.ws, "ws2": Algae2.ws, "background_turbidity": background_turbidity}
 model.save_run_info(**attributes) 
 model.save_dataset(out_fn)

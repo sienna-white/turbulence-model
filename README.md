@@ -16,7 +16,7 @@ Summary of files in model_code/
             5. advance_Q2: Advances the turbulent kinetic energy profile.
             6. advance_Q2L: Advances the product of turbulent kinetic energy and length scale
 
-    calculate_physcial_variables.py:
+    calculate_physical_variables.py:
         Contains functions to calculate physical variables such as density, Brunt-Vaisala frequency, the turbulent length scale, and turbulent diffusivities. Includes the following functions:
             1. calculate_rho: Calculates density based on temperature.
             2. calculate_Gh: Calculates the stability function Gh (MY scheme)

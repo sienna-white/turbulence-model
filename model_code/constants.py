@@ -69,6 +69,7 @@ E1=1.8  # [-]
 E2=1.33 # [-]
 E3=0.25 # [-]
 Sq=0.2  # [-]
+# Lisa thinks there's a chnace one of these parameters is off ... 
 
 #********************** FIXED CONSTANTS  ***************************
 rhoA = 1.23  # DENSITY OF AIR, kg / m^3
